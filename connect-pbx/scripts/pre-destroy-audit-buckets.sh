@@ -2,17 +2,14 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-REPO_SLUG="$(basename "${REPO_ROOT}")"
+BOOTSTRAP_HELPER="${REPO_ROOT}/scripts/lib/bootstrap-artifacts.sh"
+# shellcheck source=/dev/null
+source "${BOOTSTRAP_HELPER}"
+
+BOOTSTRAP_TFVARS_PATH="$(bootstrap_tfvars_path "${REPO_ROOT}")"
 MODULE_CATALOG="${REPO_ROOT}/modules/dependency-order.json"
 MANIFEST_HELPER="${REPO_ROOT}/scripts/module_manifest.py"
-
-if [[ -n "${CONNECT_PBX_BOOTSTRAP_DIR:-}" ]]; then
-  BOOTSTRAP_ARTIFACT_DIR="${CONNECT_PBX_BOOTSTRAP_DIR}"
-elif [[ -n "${LOCALAPPDATA:-}" ]]; then
-  BOOTSTRAP_ARTIFACT_DIR="${LOCALAPPDATA}/connect-pbx/${REPO_SLUG}/bootstrap"
-else
-  BOOTSTRAP_ARTIFACT_DIR="${HOME}/.connect-pbx/${REPO_SLUG}/bootstrap"
-fi
+BOOTSTRAP_ARTIFACT_DIR="$(resolve_bootstrap_artifact_dir_from_repo_root "${REPO_ROOT}" "${BOOTSTRAP_TFVARS_PATH}")"
 
 ENVIRONMENT=""
 BACKEND_CONFIG_PATH=""

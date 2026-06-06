@@ -93,7 +93,7 @@ queues = {
 
 ```bash
 export AWS_PROFILE=<aws_profile_dev>
-BOOTSTRAP_DIR="${CONNECT_PBX_BOOTSTRAP_DIR:-${LOCALAPPDATA}/connect-pbx/<repo_slug>/bootstrap}"
+BOOTSTRAP_DIR="${CONNECT_PBX_BOOTSTRAP_DIR:-${LOCALAPPDATA}/connect-pbx/<github_repo>/bootstrap}"
 cd connect-pbx/modules/l1-queue-architecture
 
 terraform init -backend-config="${BOOTSTRAP_DIR}/backend-<aws_profile_dev>.hcl" \
@@ -173,7 +173,7 @@ Queue attributes can be changed without recreating the queue. The following fiel
 
 ```bash
 export AWS_PROFILE=<aws_profile_dev>
-BOOTSTRAP_DIR="${CONNECT_PBX_BOOTSTRAP_DIR:-${LOCALAPPDATA}/connect-pbx/<repo_slug>/bootstrap}"
+BOOTSTRAP_DIR="${CONNECT_PBX_BOOTSTRAP_DIR:-${LOCALAPPDATA}/connect-pbx/<github_repo>/bootstrap}"
 cd connect-pbx/modules/l1-queue-architecture
 
 terraform init -backend-config="${BOOTSTRAP_DIR}/backend-<aws_profile_dev>.hcl" \
@@ -400,7 +400,7 @@ For production changes, follow the standard two-environment workflow:
 
 ```bash
 export AWS_PROFILE=<aws_profile_prod>
-BOOTSTRAP_DIR="${CONNECT_PBX_BOOTSTRAP_DIR:-${LOCALAPPDATA}/connect-pbx/<repo_slug>/bootstrap}"
+BOOTSTRAP_DIR="${CONNECT_PBX_BOOTSTRAP_DIR:-${LOCALAPPDATA}/connect-pbx/<github_repo>/bootstrap}"
 cd connect-pbx/modules/l1-queue-architecture
 
 terraform init -backend-config="${BOOTSTRAP_DIR}/backend-<aws_profile_prod>.hcl" \

@@ -163,10 +163,10 @@ The script executes five stages:
 
 The script will exit non-zero and stop at the failed stage if any step fails.
 
-After a successful run, the script also writes a profile-scoped backend artifact file outside the repo:
+After a successful run, the script also writes a profile-scoped backend artifact file outside the repo. The directory name is taken from `github_repo` in `bootstrap.tfvars`:
 
-- Windows Git Bash: `${LOCALAPPDATA}/connect-pbx/<repo_slug>/bootstrap/backend-<aws_profile>.hcl`
-- fallback: `${HOME}/.connect-pbx/<repo_slug>/bootstrap/backend-<aws_profile>.hcl`
+- Windows Git Bash: `${LOCALAPPDATA}/connect-pbx/<github_repo>/bootstrap/backend-<aws_profile>.hcl`
+- fallback: `${HOME}/.connect-pbx/<github_repo>/bootstrap/backend-<aws_profile>.hcl`
 - override: `CONNECT_PBX_BOOTSTRAP_DIR`
 
 This file is consumed by the dashboard and local runner scripts. It is local machine state and should not be committed.
@@ -463,7 +463,7 @@ Review the plan carefully — confirm it lists only bootstrap resources before a
 rm -f bootstrap.tfstate bootstrap.tfstate.backup
 
 # Remove the generated backend artifact for this AWS profile
-rm -f "${CONNECT_PBX_BOOTSTRAP_DIR:-${LOCALAPPDATA}/connect-pbx/<repo_slug>/bootstrap}/backend-${AWS_PROFILE:-default}.hcl"
+rm -f "${CONNECT_PBX_BOOTSTRAP_DIR:-${LOCALAPPDATA}/connect-pbx/<github_repo>/bootstrap}/backend-${AWS_PROFILE:-default}.hcl"
 
 # Remove the .terraform directory
 rm -rf .terraform

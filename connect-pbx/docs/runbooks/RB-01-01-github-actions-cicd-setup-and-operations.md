@@ -165,8 +165,8 @@ Optional flags:
 
 By default, the bootstrap artifact directory is repo-scoped:
 
-- Windows Git Bash: `${LOCALAPPDATA}/connect-pbx/<repo_slug>/bootstrap`
-- fallback: `${HOME}/.connect-pbx/<repo_slug>/bootstrap`
+- Windows Git Bash: `${LOCALAPPDATA}/connect-pbx/<github_repo>/bootstrap`
+- fallback: `${HOME}/.connect-pbx/<github_repo>/bootstrap`
 
 This helper intentionally does not read `modules/l0-account-baseline` and does not write `ENV_KMS_KEY_ARN`.
 

@@ -27,8 +27,10 @@ CATALOG_PATH = REPO_ROOT / "modules" / "dependency-order.json"
 ENVIRONMENTS_ROOT = REPO_ROOT / "environments"
 TF_RUNNER = REPO_ROOT / "scripts" / "tf-run.sh"
 BOOTSTRAP_MODULE_PATH = "modules/bootstrap"
+BOOTSTRAP_TFVARS_PATH = REPO_ROOT / "modules" / "bootstrap" / "bootstrap.tfvars"
 ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 OUTPUT_BLOCK_RE = re.compile(r'^\s*output\s+"([^"]+)"', re.MULTILINE)
+TFVARS_STRING_RE = r'^\s*{key}\s*=\s*"([^"]*)"\s*$'
 
 
 def load_json(path: Path) -> Any:
@@ -117,12 +119,35 @@ def environment_manifest_path(environment: str) -> Path:
     return ENVIRONMENTS_ROOT / environment / "deployment-manifest.json"
 
 
+def read_tfvar_string(path: Path, key: str) -> str | None:
+    if not path.exists():
+        return None
+
+    pattern = re.compile(TFVARS_STRING_RE.format(key=re.escape(key)), re.MULTILINE)
+    match = pattern.search(path.read_text(encoding="utf-8"))
+    if match is None:
+        return None
+    return match.group(1)
+
+
+def bootstrap_repo_name() -> str:
+    github_repo = read_tfvar_string(BOOTSTRAP_TFVARS_PATH, "github_repo")
+    if github_repo:
+        return github_repo
+
+    raise FileNotFoundError(
+        f"github_repo is not set in {BOOTSTRAP_TFVARS_PATH}. "
+        "Update modules/bootstrap/bootstrap.tfvars or set CONNECT_PBX_BOOTSTRAP_DIR explicitly."
+    )
+
+
 def bootstrap_artifact_dir() -> Path:
     if os.environ.get("CONNECT_PBX_BOOTSTRAP_DIR"):
         return Path(os.environ["CONNECT_PBX_BOOTSTRAP_DIR"])
+    github_repo = bootstrap_repo_name()
     if os.environ.get("LOCALAPPDATA"):
-        return Path(os.environ["LOCALAPPDATA"]) / "connect-pbx" / REPO_ROOT.name / "bootstrap"
-    return Path.home() / ".connect-pbx" / REPO_ROOT.name / "bootstrap"
+        return Path(os.environ["LOCALAPPDATA"]) / "connect-pbx" / github_repo / "bootstrap"
+    return Path.home() / ".connect-pbx" / github_repo / "bootstrap"
 
 
 def backend_config_path() -> Path:

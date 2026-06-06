@@ -3,29 +3,19 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-REPO_SLUG="$(basename "${REPO_ROOT}")"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+BOOTSTRAP_HELPER="${REPO_ROOT}/scripts/lib/bootstrap-artifacts.sh"
+# shellcheck source=/dev/null
+source "${BOOTSTRAP_HELPER}"
+
+BOOTSTRAP_TFVARS_PATH="bootstrap.tfvars"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 PROFILE_NAME="${AWS_PROFILE:-default}"
-
-if [[ -n "${CONNECT_PBX_BOOTSTRAP_DIR:-}" ]]; then
-  BOOTSTRAP_ARTIFACT_DIR="${CONNECT_PBX_BOOTSTRAP_DIR}"
-elif [[ -n "${LOCALAPPDATA:-}" ]]; then
-  BOOTSTRAP_ARTIFACT_DIR="${LOCALAPPDATA}/connect-pbx/${REPO_SLUG}/bootstrap"
-else
-  BOOTSTRAP_ARTIFACT_DIR="${HOME}/.connect-pbx/${REPO_SLUG}/bootstrap"
-fi
-
-BACKEND_ARTIFACT_PATH="${BOOTSTRAP_ARTIFACT_DIR}/backend-${PROFILE_NAME}.hcl"
-BOOTSTRAP_TFVARS_PATH="bootstrap.tfvars"
+BOOTSTRAP_ARTIFACT_DIR=""
+BACKEND_ARTIFACT_PATH=""
 
 read_tfvar_string() {
-  local key="$1"
-  if [[ ! -f "${BOOTSTRAP_TFVARS_PATH}" ]]; then
-    return 0
-  fi
-
-  sed -nE "s/^[[:space:]]*${key}[[:space:]]*=[[:space:]]*\"([^\"]*)\"[[:space:]]*$/\\1/p" "${BOOTSTRAP_TFVARS_PATH}" | head -n 1 | tr -d '\r'
+  read_tfvar_string_from_file "${BOOTSTRAP_TFVARS_PATH}" "$1"
 }
 
 upsert_tfvar_string() {
@@ -82,6 +72,11 @@ prompt_required_value() {
   printf '%s\n' "${resolved_value}"
 }
 
+resolve_bootstrap_artifact_context() {
+  BOOTSTRAP_ARTIFACT_DIR="$(resolve_bootstrap_artifact_dir_from_repo_root "${REPO_ROOT}" "${BOOTSTRAP_TFVARS_PATH}")"
+  BACKEND_ARTIFACT_PATH="${BOOTSTRAP_ARTIFACT_DIR}/backend-${PROFILE_NAME}.hcl"
+}
+
 verify_or_update_bootstrap_inputs() {
   local current_org_name
   local current_github_org
@@ -104,7 +99,6 @@ verify_or_update_bootstrap_inputs() {
   echo "  AWS account     : ${ACCOUNT_ID}"
   echo "  AWS profile     : ${PROFILE_NAME}"
   echo "  AWS region      : ${current_aws_region}"
-  echo "  Repo slug       : ${REPO_SLUG}"
   echo "  TF vars file    : ${BOOTSTRAP_TFVARS_PATH}"
   echo "  org_name        : ${current_org_name:-<unset>}"
   echo "  github_org      : ${current_github_org:-<unset>}"
@@ -168,6 +162,7 @@ verify_or_update_bootstrap_inputs() {
 
 echo "Bootstrapping account: ${ACCOUNT_ID}"
 verify_or_update_bootstrap_inputs
+resolve_bootstrap_artifact_context
 
 echo "[1/5] Initializing with local backend..."
 terraform init
