@@ -195,7 +195,7 @@ resource "aws_iam_role_policy" "terraform_execution_kms" {
           "kms:GenerateDataKey",
           "kms:DescribeKey",
         ]
-        Resource = "arn:aws:kms:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:key/*"
+        Resource = "arn:aws:kms:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:key/*"
         Condition = {
           StringLike = {
             "kms:ResourceAliases" = "alias/${var.org_name}-tfstate-*"
@@ -221,16 +221,70 @@ resource "aws_iam_role_policy" "terraform_execution_iam" {
           "iam:GetRolePolicy",
           "iam:ListRolePolicies",
           "iam:ListAttachedRolePolicies",
+          "iam:ListRoleTags",
           "iam:CreateRole",
+          "iam:DeleteRole",
           "iam:UpdateRole",
+          "iam:UpdateAssumeRolePolicy",
           "iam:PutRolePolicy",
           "iam:DeleteRolePolicy",
           "iam:AttachRolePolicy",
           "iam:DetachRolePolicy",
+          "iam:PutRolePermissionsBoundary",
+          "iam:DeleteRolePermissionsBoundary",
           "iam:TagRole",
+          "iam:UntagRole",
           "iam:PassRole",
         ]
         Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.org_name}-*"
+      },
+      {
+        Sid    = "IAMPolicyManagement"
+        Effect = "Allow"
+        Action = [
+          "iam:CreatePolicy",
+          "iam:DeletePolicy",
+          "iam:GetPolicy",
+          "iam:GetPolicyVersion",
+          "iam:ListPolicyVersions",
+          "iam:CreatePolicyVersion",
+          "iam:DeletePolicyVersion",
+          "iam:SetDefaultPolicyVersion",
+          "iam:TagPolicy",
+          "iam:UntagPolicy",
+        ]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/${var.org_name}-*"
+      },
+      {
+        Sid    = "IAMAccountPasswordPolicyManagement"
+        Effect = "Allow"
+        Action = [
+          "iam:GetAccountPasswordPolicy",
+          "iam:UpdateAccountPasswordPolicy",
+          "iam:DeleteAccountPasswordPolicy",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "ConnectServiceLinkedRoleRead"
+        Effect = "Allow"
+        Action = [
+          "iam:GetRole",
+        ]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/connect.amazonaws.com/AWSServiceRoleForAmazonConnect"
+      },
+      {
+        Sid    = "ConnectServiceLinkedRoleCreate"
+        Effect = "Allow"
+        Action = [
+          "iam:CreateServiceLinkedRole",
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "iam:AWSServiceName" = "connect.amazonaws.com"
+          }
+        }
       },
       {
         Sid    = "OIDCProviderManagement"
@@ -242,6 +296,92 @@ resource "aws_iam_role_policy" "terraform_execution_iam" {
           "iam:TagOpenIDConnectProvider",
         ]
         Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "terraform_execution_access_analyzer" {
+  name = "${var.org_name}-terraform-execution-access-analyzer"
+  role = aws_iam_role.terraform_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AccessAnalyzerManagement"
+        Effect = "Allow"
+        Action = [
+          "access-analyzer:CreateAnalyzer",
+          "access-analyzer:DeleteAnalyzer",
+          "access-analyzer:GetAnalyzer",
+          "access-analyzer:ListTagsForResource",
+          "access-analyzer:TagResource",
+          "access-analyzer:UntagResource",
+          "access-analyzer:UpdateAnalyzer",
+        ]
+        Resource = "arn:aws:access-analyzer:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:analyzer/${var.org_name}-*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "terraform_execution_kms_admin" {
+  name = "${var.org_name}-terraform-execution-kms-admin"
+  role = aws_iam_role.terraform_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ProjectKMSManagement"
+        Effect = "Allow"
+        Action = [
+          "kms:CreateAlias",
+          "kms:CreateKey",
+          "kms:DeleteAlias",
+          "kms:DescribeKey",
+          "kms:EnableKeyRotation",
+          "kms:GetKeyPolicy",
+          "kms:GetKeyRotationStatus",
+          "kms:ListAliases",
+          "kms:ListResourceTags",
+          "kms:PutKeyPolicy",
+          "kms:ScheduleKeyDeletion",
+          "kms:CancelKeyDeletion",
+          "kms:TagResource",
+          "kms:UntagResource",
+          "kms:UpdateAlias",
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "terraform_execution_organizations" {
+  name = "${var.org_name}-terraform-execution-organizations"
+  role = aws_iam_role.terraform_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "OrganizationsPolicyManagement"
+        Effect = "Allow"
+        Action = [
+          "organizations:CreatePolicy",
+          "organizations:DeletePolicy",
+          "organizations:DescribeOrganization",
+          "organizations:DescribePolicy",
+          "organizations:ListPolicies",
+          "organizations:ListRoots",
+          "organizations:ListTagsForResource",
+          "organizations:TagResource",
+          "organizations:UntagResource",
+          "organizations:UpdatePolicy",
+        ]
+        Resource = "*"
       }
     ]
   })
