@@ -171,6 +171,19 @@ After a successful run, the script also writes a profile-scoped backend artifact
 
 This file is consumed by the dashboard and local runner scripts. It is local machine state and should not be committed.
 
+After the AWS bootstrap completes, the script can also optionally scaffold GitHub environments and bootstrap-owned secrets:
+
+- interactive default: prompts `Create GitHub environments and sync bootstrap-owned secrets now? [y/N]:`
+- strict opt-in: `./scripts/bootstrap.sh --configure-github`
+- skip the prompt: `./scripts/bootstrap.sh --skip-configure-github`
+
+The GitHub scaffold step:
+- ensures `dev`, `staging`, and `prod` environments exist
+- syncs only `AWS_ACCOUNT_ID`, `AWS_REGION`, `STATE_BUCKET`, and `TF_EXEC_ROLE_ARN`
+- does not configure protection rules, reviewers, or `ENV_KMS_KEY_ARN`
+
+`ENV_KMS_KEY_ARN` remains a PRD-02 responsibility and is populated later by `scripts/sync-github-env-secrets.sh` or by the dashboard runner after account-baseline apply.
+
 ---
 
 ## Step 4 — Verify the migration

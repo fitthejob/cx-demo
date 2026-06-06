@@ -1,18 +1,58 @@
 #!/bin/bash
-#run from: connect-pbx/modules/bootstrap/
+#run from anywhere; the script anchors itself to connect-pbx/modules/bootstrap/
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+BOOTSTRAP_MODULE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BOOTSTRAP_HELPER="${REPO_ROOT}/scripts/lib/bootstrap-artifacts.sh"
+GITHUB_SCAFFOLD_HELPER="${REPO_ROOT}/scripts/github-env-bootstrap.sh"
 # shellcheck source=/dev/null
 source "${BOOTSTRAP_HELPER}"
 
-BOOTSTRAP_TFVARS_PATH="bootstrap.tfvars"
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+BOOTSTRAP_TFVARS_PATH="${BOOTSTRAP_MODULE_DIR}/bootstrap.tfvars"
+ACCOUNT_ID=""
 PROFILE_NAME="${AWS_PROFILE:-default}"
 BOOTSTRAP_ARTIFACT_DIR=""
 BACKEND_ARTIFACT_PATH=""
+CONFIGURE_GITHUB_MODE="prompt"
+
+while [[ "${#}" -gt 0 ]]; do
+  case "$1" in
+    --configure-github)
+      CONFIGURE_GITHUB_MODE="required"
+      shift
+      ;;
+    --skip-configure-github)
+      CONFIGURE_GITHUB_MODE="skip"
+      shift
+      ;;
+    --help|-h)
+      cat <<'EOF'
+Usage:
+  modules/bootstrap/scripts/bootstrap.sh [--configure-github] [--skip-configure-github]
+
+Behavior:
+  - Bootstraps the remote Terraform backend in AWS
+  - Writes the repo-scoped local backend artifact
+  - Optionally scaffolds GitHub environments and bootstrap-owned secrets
+
+Flags:
+  --configure-github       Run GitHub environment scaffold after bootstrap and fail non-zero if it fails
+  --skip-configure-github  Skip the post-bootstrap GitHub scaffold prompt
+EOF
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+cd "${BOOTSTRAP_MODULE_DIR}"
 
 read_tfvar_string() {
   read_tfvar_string_from_file "${BOOTSTRAP_TFVARS_PATH}" "$1"
@@ -75,6 +115,10 @@ prompt_required_value() {
 resolve_bootstrap_artifact_context() {
   BOOTSTRAP_ARTIFACT_DIR="$(resolve_bootstrap_artifact_dir_from_repo_root "${REPO_ROOT}" "${BOOTSTRAP_TFVARS_PATH}")"
   BACKEND_ARTIFACT_PATH="${BOOTSTRAP_ARTIFACT_DIR}/backend-${PROFILE_NAME}.hcl"
+}
+
+run_github_scaffold() {
+  "${GITHUB_SCAFFOLD_HELPER}" --backend-config "${BACKEND_ARTIFACT_PATH}"
 }
 
 verify_or_update_bootstrap_inputs() {
@@ -221,5 +265,44 @@ terraform state list
 echo ""
 echo "Bootstrap complete."
 echo "Bootstrap backend artifact: ${BACKEND_ARTIFACT_PATH}"
+echo "AWS bootstrap is complete. PRD-02 account baseline is still required before ENV_KMS_KEY_ARN can be populated for CI/CD."
+
+case "${CONFIGURE_GITHUB_MODE}" in
+  required)
+    echo ""
+    echo "Running GitHub environment scaffold because --configure-github was requested..."
+    if run_github_scaffold; then
+      echo "GitHub environment scaffold complete."
+    else
+      echo "GitHub environment scaffold failed after AWS bootstrap succeeded." >&2
+      echo "Bootstrap infrastructure is ready, but CI/CD scaffolding is incomplete." >&2
+      exit 1
+    fi
+    ;;
+  prompt)
+    echo ""
+    read -r -p "Create GitHub environments and sync bootstrap-owned secrets now? [y/N]: " github_scaffold_confirmation
+    case "${github_scaffold_confirmation:-N}" in
+      y|Y|yes|YES)
+        if run_github_scaffold; then
+          echo "GitHub environment scaffold complete."
+        else
+          echo "Warning: GitHub environment scaffold failed after AWS bootstrap succeeded." >&2
+          echo "Bootstrap infrastructure is ready, but CI/CD scaffolding is incomplete." >&2
+          echo "You can retry later with: ${GITHUB_SCAFFOLD_HELPER} --backend-config ${BACKEND_ARTIFACT_PATH}" >&2
+        fi
+        ;;
+      *)
+        echo "Skipped GitHub environment scaffold."
+        echo "When you are ready, run: ${GITHUB_SCAFFOLD_HELPER} --backend-config ${BACKEND_ARTIFACT_PATH}"
+        ;;
+    esac
+    ;;
+  skip)
+    echo "Skipped GitHub environment scaffold by flag."
+    echo "When you are ready, run: ${GITHUB_SCAFFOLD_HELPER} --backend-config ${BACKEND_ARTIFACT_PATH}"
+    ;;
+esac
+
 echo "Commit the updated backend.tf. DO NOT commit bootstrap.tfstate."
 echo "Add bootstrap.tfstate to .gitignore immediately."

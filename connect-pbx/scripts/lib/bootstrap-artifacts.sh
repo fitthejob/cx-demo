@@ -16,6 +16,19 @@ bootstrap_tfvars_path() {
   printf '%s\n' "${repo_root}/modules/bootstrap/bootstrap.tfvars"
 }
 
+bootstrap_github_org_from_tfvars() {
+  local tfvars_path="$1"
+  local github_org=""
+
+  github_org="$(read_tfvar_string_from_file "${tfvars_path}" "github_org")"
+  if [[ -z "${github_org}" ]]; then
+    echo "github_org is not set in ${tfvars_path}. Update bootstrap.tfvars." >&2
+    return 1
+  fi
+
+  printf '%s\n' "${github_org}"
+}
+
 bootstrap_repo_name_from_tfvars() {
   local tfvars_path="$1"
   local github_repo=""
@@ -27,6 +40,27 @@ bootstrap_repo_name_from_tfvars() {
   fi
 
   printf '%s\n' "${github_repo}"
+}
+
+resolve_github_repo_slug_from_tfvars() {
+  local tfvars_path="$1"
+  local github_org=""
+  local github_repo=""
+
+  github_org="$(bootstrap_github_org_from_tfvars "${tfvars_path}")" || return 1
+  github_repo="$(bootstrap_repo_name_from_tfvars "${tfvars_path}")" || return 1
+  printf '%s\n' "${github_org}/${github_repo}"
+}
+
+resolve_github_repo_slug_from_repo_root() {
+  local repo_root="$1"
+  local tfvars_path="${2:-}"
+
+  if [[ -z "${tfvars_path}" ]]; then
+    tfvars_path="$(bootstrap_tfvars_path "${repo_root}")"
+  fi
+
+  resolve_github_repo_slug_from_tfvars "${tfvars_path}"
 }
 
 resolve_bootstrap_artifact_dir() {

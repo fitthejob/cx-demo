@@ -3,18 +3,22 @@
   "capability_packs": [
     {
       "id": "core-telephony",
+      "name": "Core Telephony",
       "description": "Baseline Amazon Connect PBX foundation and core call-routing modules."
     },
     {
       "id": "audit-operations",
+      "name": "Audit Operations",
       "description": "Shared audit, logging, and alerting foundation."
     },
     {
       "id": "migration",
+      "name": "Migration",
       "description": "Migration-only modules used during legacy PBX cutover programs."
     },
     {
       "id": "number-governance",
+      "name": "Number Governance",
       "description": "Optional number-governance modules such as spam reputation, CNAM, E911, and routing drift."
     }
   ],

@@ -13,7 +13,7 @@ BOOTSTRAP_ARTIFACT_DIR="$(resolve_bootstrap_artifact_dir_from_repo_root "${REPO_
 
 ENVIRONMENT=""
 BACKEND_CONFIG_PATH=""
-REPO_SLUG=""
+REPO_SLUG="$(resolve_github_repo_slug_from_repo_root "${REPO_ROOT}" "${BOOTSTRAP_TFVARS_PATH}")"
 PROFILE_NAME="${AWS_PROFILE:-default}"
 REGION="${AWS_REGION:-us-east-1}"
 
@@ -129,9 +129,7 @@ echo "Environment : ${ENVIRONMENT}"
 echo "AWS profile : ${PROFILE_NAME}"
 echo "AWS region  : ${REGION}"
 echo "Backend     : ${BACKEND_CONFIG_PATH}"
-if [[ -n "${REPO_SLUG}" ]]; then
-  echo "Repository  : ${REPO_SLUG}"
-fi
+echo "Repository  : ${REPO_SLUG}"
 
 terraform -chdir="${BOOTSTRAP_MODULE}" init \
   -reconfigure \

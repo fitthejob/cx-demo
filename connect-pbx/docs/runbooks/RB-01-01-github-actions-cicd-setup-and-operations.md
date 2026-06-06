@@ -3,7 +3,7 @@
 **Runbook ID:** RB-01-01
 **Scope:** PRD-01 workflow setup and day-to-day operation
 **Audience:** Platform Engineer, Release Engineer
-**Last Updated:** 2026-04-10
+**Last Updated:** 2026-06-06
 
 ---
 
@@ -13,9 +13,10 @@ This runbook covers the one-time setup and routine operation of the PRD-01 GitHu
 
 PRD-01 is a workflow-only layer. It does not deploy a Terraform module, does not own Terraform state, and does not appear in the module catalog. Its job is to run security scan, plan, apply, and drift detection workflows against modules that are already defined elsewhere in the repo.
 
-Use this runbook after:
-- PRD-00 bootstrap is complete
-- PRD-02 account baseline is deployed for the target environment
+Use this runbook in three phases:
+- after PRD-00 bootstrap to scaffold GitHub environments and bootstrap-owned secrets
+- after PRD-02 account baseline is deployed to complete the environment-specific secret set
+- during ongoing CI/CD operation and governance maintenance
 
 ---
 
@@ -41,8 +42,8 @@ Before starting, confirm the following:
 | Requirement | Verification |
 |---|---|
 | PRD-00 bootstrap is complete | `modules/bootstrap` outputs exist and the Terraform execution role ARN is known |
-| PRD-02 account baseline is deployed in each target environment | `terraform output -raw kms_key_arn` succeeds in `modules/l0-account-baseline` for that workspace |
-| GitHub repository and environments exist | Repository is accessible and `Settings -> Environments` is available |
+| PRD-02 account baseline is deployed in each target environment when completing full CI/CD secrets | `terraform output -raw kms_key_arn` succeeds in `modules/l0-account-baseline` for that workspace |
+| GitHub repository exists | Repository is accessible and `Settings -> Environments` is available |
 | GitHub CLI is installed and authenticated if using the sync helper | `gh auth status` |
 | Workflow files are present on the default branch | `.github/workflows/ci.yml` and related workflow files exist in `main` |
 | The repo uses OIDC, not static AWS keys | No AWS access keys are stored in GitHub secrets |
@@ -71,9 +72,28 @@ Optional but useful operator sanity-check value:
 
 ---
 
-## Step 1 — Create GitHub environments
+## Step 1 — Scaffold GitHub environments after bootstrap
 
-In the repository, go to:
+Immediately after PRD-00 bootstrap, you can scaffold the GitHub environments in one of two ways:
+
+```bash
+cd connect-pbx
+./scripts/github-env-bootstrap.sh
+```
+
+Or let `modules/bootstrap/scripts/bootstrap.sh` do it for you by answering `yes` to the post-bootstrap prompt or by running:
+
+```bash
+./modules/bootstrap/scripts/bootstrap.sh --configure-github
+```
+
+What the scaffold helper does:
+- resolves the target repository from `modules/bootstrap/bootstrap.tfvars` unless `--repo` is provided
+- ensures `dev`, `staging`, and `prod` environments exist
+- syncs only bootstrap-owned secrets into each environment
+- does not configure protection rules, reviewers, wait timers, or PRD-02 secrets
+
+If you prefer to create the environments manually, go to:
 
 `Settings -> Environments`
 
@@ -86,24 +106,29 @@ These environments are the isolation boundary for PRD-01. Each environment carri
 
 ---
 
-## Step 2 — Add environment secrets
+## Step 2 — Bootstrap-owned environment secrets
 
-For each environment, add the required secrets:
+After bootstrap, the following environment secrets can be populated safely before PRD-02 exists:
 
 | Secret | Required | Notes |
 |---|---|---|
 | `AWS_REGION` | Yes | Usually `us-east-1` |
 | `TF_EXEC_ROLE_ARN` | Yes | From PRD-00 |
 | `STATE_BUCKET` | Yes | From PRD-00 |
-| `ENV_KMS_KEY_ARN` | Yes | Environment-specific PRD-02 key |
-| `SNS_ALERT_TOPIC_ARN` | No | Add only after PRD-03 exists |
 | `AWS_ACCOUNT_ID` | No | Operator sanity-check value only |
 
-Use environment-specific values. Do not copy the `dev` KMS ARN into `staging` or `prod`.
+These values are written automatically by `github-env-bootstrap.sh` or `sync-github-bootstrap-secrets.sh`.
+
+The following values are intentionally not part of bootstrap-owned secret sync:
+
+| Secret | When it becomes available |
+|---|---|
+| `ENV_KMS_KEY_ARN` | After PRD-02 account baseline is deployed for that environment |
+| `SNS_ALERT_TOPIC_ARN` | After PRD-03 alerting is deployed |
 
 ---
 
-## Step 3 — Configure environment protection rules
+## Step 3 — Configure environment protection rules manually
 
 Set protection rules as follows:
 
@@ -115,13 +140,13 @@ Set protection rules as follows:
 
 If you want to match the PRD target posture exactly, also add a 5-minute wait timer to `prod`.
 
-The workflows already target the correct GitHub environment at runtime. The protection rules are what turn those workflow references into approval gates.
+The workflows already target the correct GitHub environment at runtime. The protection rules are what turn those workflow references into approval gates. These controls are intentionally not managed by bootstrap or by the GitHub scaffold helper.
 
 ---
 
-## Step 4 — Verify bootstrap and baseline values match GitHub
+## Step 4 — Verify bootstrap values match GitHub after scaffold
 
-Before running any workflow, verify the values you entered into GitHub still match the current AWS environment:
+Before running any workflow, verify the bootstrap-owned values in GitHub still match the current AWS environment:
 
 ```bash
 # PRD-00 outputs
@@ -129,23 +154,6 @@ cd connect-pbx/modules/bootstrap
 terraform output terraform_execution_role_arn
 terraform output state_bucket_name
 
-# PRD-02 output for the target workspace
-cd ../l0-account-baseline
-terraform workspace select dev
-terraform output kms_key_arn
-```
-
-Repeat the PRD-02 check for `staging` and `prod` before populating those environment secrets.
-
----
-
-## Step 5 — Optional: sync bootstrap-derived environment secrets first
-
-Immediately after PRD-00 bootstrap, you can populate the bootstrap-owned GitHub Actions environment secrets without reading PRD-02:
-
-```bash
-cd connect-pbx
-./scripts/sync-github-bootstrap-secrets.sh --env dev
 ```
 
 What the bootstrap helper does:
@@ -172,7 +180,7 @@ This helper intentionally does not read `modules/l0-account-baseline` and does n
 
 ---
 
-## Step 6 — Optional: sync the full environment secret set after PRD-02
+## Step 5 — Complete the full environment secret set after PRD-02
 
 If bootstrap and account-baseline are already deployed, you can populate the full GitHub Actions environment secret set automatically:
 
@@ -201,7 +209,7 @@ Example for staging:
 
 ---
 
-## Step 7 — Run the first manual pipeline test
+## Step 6 — Run the first manual pipeline test
 
 Use `ci.yml` for the first validation run.
 
