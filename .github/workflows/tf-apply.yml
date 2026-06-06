@@ -46,6 +46,8 @@ jobs:
             exit 1
           fi
 
+          MODULE_SLUG="$(printf '%s' "${MODULE_PATH}" | tr '/:' '--' | tr -d '\r')"
+
           STATE_KEY="$(python "${HELPER}" module-field --catalog "${CATALOG}" --module "${MODULE_PATH}" --field state_key | tr -d '\r')"
           WORKSPACE_SCOPED="$(python "${HELPER}" module-field --catalog "${CATALOG}" --module "${MODULE_PATH}" --field workspace_scoped | tr -d '\r')"
           WORKSPACE_NAME="default"
@@ -53,7 +55,14 @@ jobs:
             WORKSPACE_NAME="${{ inputs.environment }}"
           fi
 
+          PLAN_ARTIFACT_NAME="${{ inputs.plan_artifact_name }}"
+          if [[ -z "${PLAN_ARTIFACT_NAME}" || "${PLAN_ARTIFACT_NAME}" == *"/"* || "${PLAN_ARTIFACT_NAME}" == *":"* ]]; then
+            PLAN_ARTIFACT_NAME="tfplan-${MODULE_SLUG}-${{ inputs.environment }}-${{ github.run_id }}"
+          fi
+
           echo "state_key=${STATE_KEY}" >> "${GITHUB_OUTPUT}"
+          echo "module_slug=${MODULE_SLUG}" >> "${GITHUB_OUTPUT}"
+          echo "plan_artifact_name=${PLAN_ARTIFACT_NAME}" >> "${GITHUB_OUTPUT}"
           echo "workspace_scoped=${WORKSPACE_SCOPED}" >> "${GITHUB_OUTPUT}"
           echo "workspace_name=${WORKSPACE_NAME}" >> "${GITHUB_OUTPUT}"
 
@@ -63,15 +72,20 @@ jobs:
           role-to-assume: ${{ secrets.TF_EXEC_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Read Terraform Version
+        id: terraform-version
+        shell: bash
+        run: echo "version=$(tr -d '\r\n' < connect-pbx/.terraform-version)" >> "${GITHUB_OUTPUT}"
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version_file: connect-pbx/.terraform-version
+          terraform_version: ${{ steps.terraform-version.outputs.version }}
 
       - name: Download Plan Artifact
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.plan_artifact_name }}
+          name: ${{ steps.metadata.outputs.plan_artifact_name }}
           path: connect-pbx/${{ inputs.module_path }}
 
       - name: Terraform Init
@@ -109,7 +123,7 @@ jobs:
             "${{ inputs.module_path }}" \
             "${{ steps.metadata.outputs.workspace_name }}" \
             "${{ steps.apply.outcome }}" \
-            "${{ inputs.plan_artifact_name }}" \
+            "${{ steps.metadata.outputs.plan_artifact_name }}" \
             "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             > audit-entry.json
 

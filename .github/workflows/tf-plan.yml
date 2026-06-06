@@ -45,6 +45,8 @@ jobs:
             exit 1
           fi
 
+          MODULE_SLUG="$(printf '%s' "${MODULE_PATH}" | tr '/:' '--' | tr -d '\r')"
+
           STATE_KEY="$(python "${HELPER}" module-field --catalog "${CATALOG}" --module "${MODULE_PATH}" --field state_key | tr -d '\r')"
           WORKSPACE_SCOPED="$(python "${HELPER}" module-field --catalog "${CATALOG}" --module "${MODULE_PATH}" --field workspace_scoped | tr -d '\r')"
           DOMAIN_TFVARS_NAME="$(python "${HELPER}" module-field --catalog "${CATALOG}" --module "${MODULE_PATH}" --field domain_tfvars | tr -d '\r')"
@@ -64,6 +66,7 @@ jobs:
           fi
 
           echo "state_key=${STATE_KEY}" >> "${GITHUB_OUTPUT}"
+          echo "module_slug=${MODULE_SLUG}" >> "${GITHUB_OUTPUT}"
           echo "workspace_scoped=${WORKSPACE_SCOPED}" >> "${GITHUB_OUTPUT}"
           echo "workspace_name=${WORKSPACE_NAME}" >> "${GITHUB_OUTPUT}"
           echo "global_tfvars=${GLOBAL_TFVARS}" >> "${GITHUB_OUTPUT}"
@@ -75,10 +78,15 @@ jobs:
           role-to-assume: ${{ secrets.TF_EXEC_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Read Terraform Version
+        id: terraform-version
+        shell: bash
+        run: echo "version=$(tr -d '\r\n' < connect-pbx/.terraform-version)" >> "${GITHUB_OUTPUT}"
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version_file: connect-pbx/.terraform-version
+          terraform_version: ${{ steps.terraform-version.outputs.version }}
 
       - name: Terraform Init
         working-directory: connect-pbx/${{ inputs.module_path }}
@@ -119,8 +127,9 @@ jobs:
       - name: Upload Plan Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tfplan-${{ inputs.module_path }}-${{ inputs.environment }}-${{ github.run_id }}
+          name: tfplan-${{ steps.metadata.outputs.module_slug }}-${{ inputs.environment }}-${{ github.run_id }}
           path: connect-pbx/${{ inputs.module_path }}/tfplan.binary
+          if-no-files-found: error
           retention-days: 30
 
       - name: Post Plan to PR

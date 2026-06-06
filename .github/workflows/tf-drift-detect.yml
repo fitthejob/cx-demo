@@ -82,10 +82,15 @@ jobs:
           role-to-assume: ${{ secrets.TF_EXEC_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: Read Terraform Version
+        id: terraform-version
+        shell: bash
+        run: echo "version=$(tr -d '\r\n' < connect-pbx/.terraform-version)" >> "${GITHUB_OUTPUT}"
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version_file: connect-pbx/.terraform-version
+          terraform_version: ${{ steps.terraform-version.outputs.version }}
 
       - name: Terraform Init
         working-directory: connect-pbx/${{ matrix.module }}
