@@ -314,6 +314,9 @@ resource "aws_iam_policy" "platform_boundary" {
   }
 }
 
+# Cost guardrail: DO NOT change this from ACCOUNT type unless pricing and design are
+# explicitly reviewed. Internal and unused-access analyzers can incur HUGE charges.
+
 resource "aws_accessanalyzer_analyzer" "account" {
   analyzer_name = "${var.org_name}-account-analyzer"
   type          = "ACCOUNT"

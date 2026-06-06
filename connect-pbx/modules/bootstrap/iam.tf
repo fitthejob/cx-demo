@@ -197,7 +197,7 @@ resource "aws_iam_role_policy" "terraform_execution_kms" {
         ]
         Resource = "arn:aws:kms:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:key/*"
         Condition = {
-          StringLike = {
+          "ForAnyValue:StringLike" = {
             "kms:ResourceAliases" = "alias/${var.org_name}-tfstate-*"
           }
         }
@@ -234,9 +234,57 @@ resource "aws_iam_role_policy" "terraform_execution_iam" {
           "iam:DeleteRolePermissionsBoundary",
           "iam:TagRole",
           "iam:UntagRole",
-          "iam:PassRole",
         ]
         Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.org_name}-*"
+      },
+      {
+        Sid    = "IAMPassRoleToLambda"
+        Effect = "Allow"
+        Action = [
+          "iam:PassRole",
+        ]
+        Resource = [
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.org_name}-audit-lambda-execution",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.org_name}-cnam-registry-*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.org_name}-closure-check-*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.org_name}-phone-flow-assoc-*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.org_name}-e911-compliance-*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.org_name}-holiday-check-*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.org_name}-number-portability-check-*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.org_name}-routing-drift-*",
+          "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.org_name}-number-reputation-*",
+        ]
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = "lambda.amazonaws.com"
+          }
+        }
+      },
+      {
+        Sid    = "IAMPassRoleToConfig"
+        Effect = "Allow"
+        Action = [
+          "iam:PassRole",
+        ]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.org_name}-config-service-role-*"
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = "config.amazonaws.com"
+          }
+        }
+      },
+      {
+        Sid    = "IAMPassRoleToCloudTrail"
+        Effect = "Allow"
+        Action = [
+          "iam:PassRole",
+        ]
+        Resource = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.org_name}-cloudtrail-cloudwatch"
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = "cloudtrail.amazonaws.com"
+          }
+        }
       },
       {
         Sid    = "IAMPolicyManagement"

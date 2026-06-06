@@ -14,6 +14,9 @@ on:
         required: true
         type: string
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   plan:
     runs-on: ubuntu-latest
@@ -27,7 +30,7 @@ jobs:
       pull-requests: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Resolve module metadata
         id: metadata
@@ -73,7 +76,7 @@ jobs:
           echo "domain_tfvars_path=${DOMAIN_TFVARS_PATH}" >> "${GITHUB_OUTPUT}"
 
       - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.TF_EXEC_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
@@ -84,7 +87,7 @@ jobs:
         run: echo "version=$(tr -d '\r\n' < connect-pbx/.terraform-version)" >> "${GITHUB_OUTPUT}"
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ steps.terraform-version.outputs.version }}
 
@@ -125,7 +128,7 @@ jobs:
         continue-on-error: true
 
       - name: Upload Plan Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: tfplan-${{ steps.metadata.outputs.module_slug }}-${{ inputs.environment }}-${{ github.run_id }}
           path: connect-pbx/${{ inputs.module_path }}/tfplan.binary
@@ -134,7 +137,7 @@ jobs:
 
       - name: Post Plan to PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');

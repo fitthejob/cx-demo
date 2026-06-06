@@ -16,6 +16,9 @@ on:
         required: true
         type: string
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   apply:
     runs-on: ubuntu-latest
@@ -28,7 +31,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Resolve module metadata
         id: metadata
@@ -67,7 +70,7 @@ jobs:
           echo "workspace_name=${WORKSPACE_NAME}" >> "${GITHUB_OUTPUT}"
 
       - name: Configure AWS credentials via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.TF_EXEC_ROLE_ARN }}
           aws-region: ${{ secrets.AWS_REGION }}
@@ -78,12 +81,12 @@ jobs:
         run: echo "version=$(tr -d '\r\n' < connect-pbx/.terraform-version)" >> "${GITHUB_OUTPUT}"
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ steps.terraform-version.outputs.version }}
 
       - name: Download Plan Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ${{ steps.metadata.outputs.plan_artifact_name }}
           path: connect-pbx/${{ inputs.module_path }}

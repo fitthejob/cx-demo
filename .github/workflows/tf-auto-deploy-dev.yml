@@ -16,6 +16,9 @@ name: Auto Deploy Dev
   #     - "connect-pbx/environments/dev/**"
   #     - "connect-pbx/scripts/**"
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 permissions:
   id-token: write
   contents: read
@@ -27,7 +30,7 @@ jobs:
     outputs:
       matrix: ${{ steps.resolve.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Resolve eligible dev modules in dependency order
         id: resolve
         run: |
