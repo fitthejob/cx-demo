@@ -176,6 +176,7 @@ echo "Bootstrap-owned GitHub secrets synced:"
 echo "  - AWS_ACCOUNT_ID"
 echo "  - AWS_REGION"
 echo "  - STATE_BUCKET"
+echo "  - LOCK_TABLE"
 echo "  - TF_EXEC_ROLE_ARN"
 echo
 echo "PRD-02 account baseline is still required before ENV_KMS_KEY_ARN can be populated."

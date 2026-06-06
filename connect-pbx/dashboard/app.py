@@ -141,6 +141,21 @@ def bootstrap_repo_name() -> str:
     )
 
 
+def bootstrap_github_org() -> str:
+    github_org = read_tfvar_string(BOOTSTRAP_TFVARS_PATH, "github_org")
+    if github_org:
+        return github_org
+
+    raise FileNotFoundError(
+        f"github_org is not set in {BOOTSTRAP_TFVARS_PATH}. "
+        "Update modules/bootstrap/bootstrap.tfvars."
+    )
+
+
+def bootstrap_repo_slug() -> str:
+    return f"{bootstrap_github_org()}/{bootstrap_repo_name()}"
+
+
 def bootstrap_artifact_dir() -> Path:
     if os.environ.get("CONNECT_PBX_BOOTSTRAP_DIR"):
         return Path(os.environ["CONNECT_PBX_BOOTSTRAP_DIR"])
@@ -167,6 +182,128 @@ def parse_backend_config(path: Path) -> dict[str, str]:
         key, value = line.split("=", 1)
         config[key.strip()] = value.strip().strip('"')
     return config
+
+
+def collect_github_status(environment: str) -> dict[str, Any]:
+    repo_slug = bootstrap_repo_slug()
+    gh = shutil.which("gh")
+    status: dict[str, Any] = {
+        "repo": repo_slug,
+        "gh_cli_available": gh is not None,
+        "gh_authenticated": False,
+        "environment_status": "unknown",
+        "bootstrap_secrets_status": "unknown",
+        "prd02_secret_status": "unknown",
+        "cicd_readiness": "unknown",
+        "detail": "",
+    }
+
+    if gh is None:
+        status["detail"] = "GitHub CLI not found in PATH."
+        return status
+
+    auth = subprocess.run([gh, "auth", "status"], capture_output=True, text=True, check=False)
+    if auth.returncode != 0:
+        stderr = (auth.stderr or "").strip()
+        stdout = (auth.stdout or "").strip()
+        status["detail"] = stderr or stdout or "GitHub CLI is not authenticated."
+        return status
+
+    status["gh_authenticated"] = True
+
+    environment_lookup = subprocess.run(
+        [gh, "api", f"repos/{repo_slug}/environments/{environment}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if environment_lookup.returncode != 0:
+        stderr = (environment_lookup.stderr or "").strip()
+        if "404" in stderr or "Not Found" in stderr:
+            status["environment_status"] = "missing"
+            status["bootstrap_secrets_status"] = "missing"
+            status["prd02_secret_status"] = "missing"
+            status["cicd_readiness"] = "missing"
+            return status
+
+        status["detail"] = stderr or "Unable to query GitHub environment state."
+        return status
+
+    status["environment_status"] = "present"
+
+    secrets_lookup = subprocess.run(
+        [gh, "api", f"repos/{repo_slug}/environments/{environment}/secrets"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if secrets_lookup.returncode != 0:
+        stderr = (secrets_lookup.stderr or "").strip()
+        status["detail"] = stderr or "Unable to query GitHub environment secrets."
+        return status
+
+    try:
+        secrets_doc = json.loads(secrets_lookup.stdout or "{}")
+    except json.JSONDecodeError:
+        status["detail"] = "GitHub environment secrets response was not valid JSON."
+        return status
+
+    secret_names = {secret.get("name", "") for secret in secrets_doc.get("secrets", []) if secret.get("name")}
+    required_bootstrap_secrets = {"AWS_ACCOUNT_ID", "AWS_REGION", "STATE_BUCKET", "LOCK_TABLE", "TF_EXEC_ROLE_ARN"}
+    present_bootstrap_count = len(required_bootstrap_secrets & secret_names)
+
+    if present_bootstrap_count == len(required_bootstrap_secrets):
+        status["bootstrap_secrets_status"] = "complete"
+    elif present_bootstrap_count == 0:
+        status["bootstrap_secrets_status"] = "missing"
+    else:
+        status["bootstrap_secrets_status"] = "partial"
+
+    if "ENV_KMS_KEY_ARN" in secret_names:
+        status["prd02_secret_status"] = "present"
+    else:
+        status["prd02_secret_status"] = "missing"
+
+    if status["bootstrap_secrets_status"] == "complete" and status["prd02_secret_status"] == "present":
+        status["cicd_readiness"] = "ready"
+    elif status["bootstrap_secrets_status"] in {"complete", "partial"}:
+        status["cicd_readiness"] = "partial"
+    else:
+        status["cicd_readiness"] = "missing"
+
+    return status
+
+
+def current_aws_account_id() -> str | None:
+    aws = shutil.which("aws")
+    if not aws:
+        return None
+
+    result = subprocess.run(
+        [aws, "sts", "get-caller-identity", "--query", "Account", "--output", "text"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return None
+
+    account_id = (result.stdout or "").strip()
+    return account_id or None
+
+
+def backend_scope_note() -> str:
+    return "Account-scoped bootstrap backend"
+
+
+def account_scope_notice(environments: list[str], account_id: str | None) -> str:
+    if not account_id or len(environments) <= 1:
+        return ""
+
+    return (
+        f"All dashboard environments currently resolve through AWS account {account_id} via one account-scoped bootstrap backend. "
+        "This is normal for a single-account dev or demo setup. In a future multi-account model, each target account should get its own bootstrap."
+    )
 
 
 def state_object_key(module: dict[str, Any], environment: str) -> str:
@@ -341,11 +478,14 @@ def relevant_destroy_paths(
 def load_environment_state(environment: str, include_deployment_status: bool = True) -> dict[str, Any]:
     catalog = load_json(CATALOG_PATH)
     manifest = load_json(environment_manifest_path(environment))
+    environments = available_environments()
     enabled = resolve_enabled_module_paths(catalog, manifest)
     enabled_set = set(enabled)
     pack_names = {pack["id"]: pack["name"] for pack in catalog.get("capability_packs", [])}
     backend_path = backend_config_path()
     backend = parse_backend_config(backend_path) if include_deployment_status else {}
+    github_status = collect_github_status(environment)
+    aws_account_id = current_aws_account_id()
     status_by_path: dict[str, tuple[str, str]] = {}
 
     if include_deployment_status:
@@ -393,6 +533,12 @@ def load_environment_state(environment: str, include_deployment_status: bool = T
         "backend_config_path": str(backend_path),
         "backend_config_present": backend_path.exists(),
         "aws_profile": os.environ.get("AWS_PROFILE", "default"),
+        "aws_account_id": aws_account_id,
+        "github_repo_slug": bootstrap_repo_slug(),
+        "github_environment": environment,
+        "backend_scope": backend_scope_note(),
+        "account_scope_notice": account_scope_notice(environments, aws_account_id),
+        "github_status": github_status,
     }
 
 

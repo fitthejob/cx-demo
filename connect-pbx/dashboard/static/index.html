@@ -22,7 +22,16 @@
       <main class="layout">
         <section class="panel controls">
           <div class="panel-header">
-            <h2>Environment</h2>
+            <div class="panel-heading-with-info">
+              <h2>Environment</h2>
+              <button
+                id="accountScopeInfoButton"
+                type="button"
+                class="info-icon-button hidden"
+                aria-label="Show account scope note"
+                aria-describedby="floatingInfoTooltip"
+              >!</button>
+            </div>
           </div>
           <div class="control-row">
             <label for="environmentSelect">Manifest</label>
@@ -32,6 +41,10 @@
           <div class="info-list">
             <div><span>Profile</span><strong id="manifestProfile">-</strong></div>
             <div><span>AWS profile</span><strong id="awsProfile">-</strong></div>
+            <div><span>AWS account</span><strong id="awsAccountId">-</strong></div>
+            <div><span>GitHub repo</span><strong id="githubRepoSlug">-</strong></div>
+            <div><span>GitHub env</span><strong id="githubEnvironment">-</strong></div>
+            <div><span>Backend scope</span><strong id="backendScope">-</strong></div>
             <div><span>Manifest packs</span><strong id="packSummary">-</strong></div>
             <div><span>Manifest modules</span><strong id="enabledCount">0</strong></div>
             <div><span>Live deployed</span><strong id="deployedCount">0</strong></div>
@@ -130,6 +143,7 @@
         </section>
       </main>
     </div>
+    <div id="floatingInfoTooltip" class="floating-info-tooltip hidden" role="tooltip"></div>
     <script src="/app.js"></script>
   </body>
   </html>

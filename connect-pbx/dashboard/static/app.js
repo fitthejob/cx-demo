@@ -20,6 +20,7 @@ const state = {
   runApprovalInput: "",
   pollHandle: null,
   loadingReason: "",
+  accountScopeTooltipMessage: "",
 };
 
 const els = {
@@ -27,10 +28,16 @@ const els = {
   refreshButton: document.getElementById("refreshButton"),
   manifestProfile: document.getElementById("manifestProfile"),
   awsProfile: document.getElementById("awsProfile"),
+  awsAccountId: document.getElementById("awsAccountId"),
+  githubRepoSlug: document.getElementById("githubRepoSlug"),
+  githubEnvironment: document.getElementById("githubEnvironment"),
+  backendScope: document.getElementById("backendScope"),
   packSummary: document.getElementById("packSummary"),
   enabledCount: document.getElementById("enabledCount"),
   deployedCount: document.getElementById("deployedCount"),
   envStateSummary: document.getElementById("envStateSummary"),
+  accountScopeInfoButton: document.getElementById("accountScopeInfoButton"),
+  floatingInfoTooltip: document.getElementById("floatingInfoTooltip"),
   moduleSearch: document.getElementById("moduleSearch"),
   moduleList: document.getElementById("moduleList"),
   runnerStatus: document.getElementById("runnerStatus"),
@@ -268,6 +275,66 @@ function setRunnerStatus(message, loading = false, detail = "") {
     els.runnerStatusDetail.textContent = "";
     els.runnerStatusDetail.classList.add("hidden");
   }
+}
+
+function formatGithubStatusDetail(githubStatus) {
+  if (!githubStatus) {
+    return "";
+  }
+
+  const lines = [
+    `GitHub env: ${githubStatus.environment_status || "unknown"}`,
+    `Bootstrap secrets: ${githubStatus.bootstrap_secrets_status || "unknown"}`,
+    `PRD-02 secret: ${githubStatus.prd02_secret_status || "unknown"}`,
+    `CI/CD readiness: ${githubStatus.cicd_readiness || "unknown"}`,
+  ];
+
+  if (githubStatus.detail) {
+    lines.push(`GitHub status detail: ${githubStatus.detail}`);
+  }
+
+  return lines.join("\n");
+}
+
+function hideFloatingInfoTooltip() {
+  els.floatingInfoTooltip.textContent = "";
+  els.floatingInfoTooltip.classList.add("hidden");
+}
+
+function positionFloatingInfoTooltip(x, y) {
+  const offset = 14;
+  const tooltipWidth = els.floatingInfoTooltip.offsetWidth || 0;
+  const tooltipHeight = els.floatingInfoTooltip.offsetHeight || 0;
+  const maxLeft = Math.max(12, window.innerWidth - tooltipWidth - 12);
+  const maxTop = Math.max(12, window.innerHeight - tooltipHeight - 12);
+  const nextLeft = Math.min(x + offset, maxLeft);
+  const nextTop = Math.min(y + offset, maxTop);
+
+  els.floatingInfoTooltip.style.left = `${nextLeft}px`;
+  els.floatingInfoTooltip.style.top = `${nextTop}px`;
+}
+
+function showFloatingInfoTooltip(message, x, y) {
+  if (!message) {
+    hideFloatingInfoTooltip();
+    return;
+  }
+
+  els.floatingInfoTooltip.textContent = message;
+  els.floatingInfoTooltip.classList.remove("hidden");
+  positionFloatingInfoTooltip(x, y);
+}
+
+function renderAccountScopeNotice(message) {
+  state.accountScopeTooltipMessage = message || "";
+
+  if (!state.accountScopeTooltipMessage) {
+    els.accountScopeInfoButton.classList.add("hidden");
+    hideFloatingInfoTooltip();
+    return;
+  }
+
+  els.accountScopeInfoButton.classList.remove("hidden");
 }
 
 function renderRunPlaceholder(status, detail, { hideMeta = false } = {}) {
@@ -866,18 +933,23 @@ async function loadState(environment) {
 
     els.manifestProfile.textContent = data.manifest.deployment_profile_name || "-";
     els.awsProfile.textContent = data.aws_profile || "default";
+    els.awsAccountId.textContent = data.aws_account_id || "unknown";
+    els.githubRepoSlug.textContent = data.github_repo_slug || "-";
+    els.githubEnvironment.textContent = data.github_environment || data.environment;
+    els.backendScope.textContent = data.backend_scope || "-";
     els.packSummary.textContent = (data.manifest.enabled_capability_packs || []).join(", ") || "-";
     els.enabledCount.textContent = String(data.enabled_module_paths.length);
     const deployedCount = data.modules.filter((module) => module.deployment_status === "deployed").length;
     els.deployedCount.textContent = String(deployedCount);
     els.envStateSummary.textContent = liveEnvironmentSummary(data.modules);
+    renderAccountScopeNotice(data.account_scope_notice || "");
     if (!quietSync) {
       setRunnerStatus(
         data.bash_available
         ? `Runner ready. Git Bash detected. Backend config: ${data.backend_config_present ? "present" : "missing"}.`
         : "Git Bash not detected. Runs will fail until Bash is available.",
         true,
-        "Finalizing module preview...",
+        `Finalizing module preview...\n${formatGithubStatusDetail(data.github_status)}`,
       );
     }
 
@@ -899,7 +971,7 @@ async function loadState(environment) {
       ? `Runner ready. Git Bash detected. Backend config: ${data.backend_config_present ? "present" : "missing"}.`
       : "Git Bash not detected. Runs will fail until Bash is available.",
       false,
-      "",
+      formatGithubStatusDetail(data.github_status),
     );
   } finally {
     state.loadingState = false;
@@ -2015,6 +2087,30 @@ els.environmentSelect.addEventListener("change", async (event) => {
 
 els.refreshButton.addEventListener("click", async () => {
   await loadState({ environment: state.environment, reason: "manual-refresh" });
+});
+
+els.accountScopeInfoButton.addEventListener("mouseenter", (event) => {
+  showFloatingInfoTooltip(state.accountScopeTooltipMessage, event.clientX, event.clientY);
+});
+
+els.accountScopeInfoButton.addEventListener("mousemove", (event) => {
+  if (els.floatingInfoTooltip.classList.contains("hidden")) {
+    return;
+  }
+  positionFloatingInfoTooltip(event.clientX, event.clientY);
+});
+
+els.accountScopeInfoButton.addEventListener("mouseleave", () => {
+  hideFloatingInfoTooltip();
+});
+
+els.accountScopeInfoButton.addEventListener("focus", () => {
+  const rect = els.accountScopeInfoButton.getBoundingClientRect();
+  showFloatingInfoTooltip(state.accountScopeTooltipMessage, rect.right, rect.bottom);
+});
+
+els.accountScopeInfoButton.addEventListener("blur", () => {
+  hideFloatingInfoTooltip();
 });
 
 els.deployModeButton.addEventListener("click", async () => {
