@@ -35,10 +35,16 @@ resource "aws_iam_role" "github_actions_oidc" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = [
-              for branch in var.allowed_branches :
-              "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/${branch}"
-            ]
+            "token.actions.githubusercontent.com:sub" = concat(
+              [
+                for branch in var.allowed_branches :
+                "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/${branch}"
+              ],
+              [
+                for environment in var.allowed_environments :
+                "repo:${var.github_org}/${var.github_repo}:environment:${environment}"
+              ]
+            )
           }
         }
       }
@@ -99,10 +105,16 @@ resource "aws_iam_role" "terraform_execution" {
             "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "token.actions.githubusercontent.com:sub" = [
-              for branch in var.allowed_branches :
-              "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/${branch}"
-            ]
+            "token.actions.githubusercontent.com:sub" = concat(
+              [
+                for branch in var.allowed_branches :
+                "repo:${var.github_org}/${var.github_repo}:ref:refs/heads/${branch}"
+              ],
+              [
+                for environment in var.allowed_environments :
+                "repo:${var.github_org}/${var.github_repo}:environment:${environment}"
+              ]
+            )
           }
         }
       }

@@ -25,10 +25,16 @@ variable "allowed_branches" {
   default     = ["main", "develop"]
 }
 
+variable "allowed_environments" {
+  type        = list(string)
+  description = "GitHub Actions environments permitted to assume the OIDC role."
+  default     = ["dev", "staging", "prod"]
+}
+
 variable "terraform_execution_role_boundary_arn" {
   type        = string
   description = "Optional permissions boundary ARN for the Terraform execution role."
-  default = ""
+  default     = ""
 
 }
 
