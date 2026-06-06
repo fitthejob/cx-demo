@@ -123,6 +123,8 @@ The following variables have defaults and do not need to be set unless overridin
 | `terraform_execution_role_boundary_arn` | `""` | Leave empty unless your account requires permissions boundaries |
 | `deployment_profile` | single/standalone defaults | Leave as-is for initial bootstrap |
 
+When `bootstrap.sh` starts, it reads `bootstrap.tfvars`, shows the current values for `org_name`, `github_org`, `github_repo`, and `aws_region`, and asks for confirmation before apply. If you answer `no`, the script prompts you for corrected values and patches `bootstrap.tfvars` in place before continuing.
+
 ---
 
 ## Step 2 — Confirm backend.tf is set to Phase 1 (local)
