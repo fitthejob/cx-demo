@@ -1,0 +1,290 @@
+{
+  "version": "1.0",
+  "capability_packs": [
+    {
+      "id": "core-telephony",
+      "description": "Baseline Amazon Connect PBX foundation and core call-routing modules."
+    },
+    {
+      "id": "audit-operations",
+      "description": "Shared audit, logging, and alerting foundation."
+    },
+    {
+      "id": "migration",
+      "description": "Migration-only modules used during legacy PBX cutover programs."
+    },
+    {
+      "id": "number-governance",
+      "description": "Optional number-governance modules such as spam reputation, CNAM, E911, and routing drift."
+    }
+  ],
+  "layers": [
+    {
+      "layer": 0,
+      "parallel": false,
+      "modules": [
+        "modules/bootstrap",
+        "modules/l0-account-baseline",
+        "modules/l0-audit-pipeline"
+      ]
+    },
+    {
+      "layer": 1,
+      "parallel": true,
+      "modules": [
+        "modules/l1-connect-instance",
+        "modules/l1-phone-numbers",
+        "modules/l1-hours-of-operation",
+        "modules/l1-queue-architecture",
+        "modules/l1-contact-flow-framework",
+        "modules/l1-number-portability-check"
+      ]
+    },
+    {
+      "layer": 2,
+      "parallel": true,
+      "modules": [
+        "modules/l1-spam-reputation",
+        "modules/l1-cnam-registry",
+        "modules/l1-e911-compliance",
+        "modules/l1-routing-drift"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "path": "modules/bootstrap",
+      "prd": "PRD-00",
+      "layer": 0,
+      "classification": "core-required",
+      "capability_packs": [
+        "core-telephony"
+      ],
+      "dependencies": [],
+      "state_key": "bootstrap/terraform.tfstate",
+      "domain_tfvars": "",
+      "workspace_scoped": false,
+      "supports_destroy": false
+    },
+    {
+      "path": "modules/l0-account-baseline",
+      "prd": "PRD-02",
+      "layer": 0,
+      "classification": "core-required",
+      "capability_packs": [
+        "core-telephony"
+      ],
+      "dependencies": [
+        "modules/bootstrap"
+      ],
+      "state_key": "l0-account-baseline/terraform.tfstate",
+      "domain_tfvars": "global.tfvars",
+      "workspace_scoped": true,
+      "supports_destroy": true
+    },
+    {
+      "path": "modules/l0-audit-pipeline",
+      "prd": "PRD-03",
+      "layer": 0,
+      "classification": "conditional-foundation",
+      "capability_packs": [
+        "audit-operations"
+      ],
+      "dependencies": [
+        "modules/bootstrap",
+        "modules/l0-account-baseline"
+      ],
+      "state_key": "l0-audit-pipeline/terraform.tfstate",
+      "domain_tfvars": "global.tfvars",
+      "workspace_scoped": true,
+      "supports_destroy": true
+    },
+    {
+      "path": "modules/l1-connect-instance",
+      "prd": "PRD-10",
+      "layer": 1,
+      "classification": "core-required",
+      "capability_packs": [
+        "core-telephony"
+      ],
+      "dependencies": [
+        "modules/bootstrap",
+        "modules/l0-account-baseline"
+      ],
+      "state_key": "l1-connect-instance/terraform.tfstate",
+      "domain_tfvars": "connect-instance.tfvars",
+      "workspace_scoped": true,
+      "supports_destroy": false,
+      "supports_operator_destroy": true
+    },
+    {
+      "path": "modules/l1-phone-numbers",
+      "prd": "PRD-11",
+      "layer": 1,
+      "classification": "core-required",
+      "capability_packs": [
+        "core-telephony"
+      ],
+      "dependencies": [
+        "modules/bootstrap",
+        "modules/l1-connect-instance"
+      ],
+      "state_key": "l1-phone-numbers/terraform.tfstate",
+      "domain_tfvars": "phone-numbers.tfvars",
+      "workspace_scoped": true,
+      "supports_destroy": false,
+      "supports_operator_destroy": true
+    },
+    {
+      "path": "modules/l1-hours-of-operation",
+      "prd": "PRD-12",
+      "layer": 1,
+      "classification": "core-required",
+      "capability_packs": [
+        "core-telephony"
+      ],
+      "dependencies": [
+        "modules/bootstrap",
+        "modules/l0-account-baseline",
+        "modules/l1-connect-instance"
+      ],
+      "state_key": "l1-hours-of-operation/terraform.tfstate",
+      "domain_tfvars": "hours.tfvars",
+      "workspace_scoped": true,
+      "supports_destroy": true
+    },
+    {
+      "path": "modules/l1-queue-architecture",
+      "prd": "PRD-13",
+      "layer": 1,
+      "classification": "core-required",
+      "capability_packs": [
+        "core-telephony"
+      ],
+      "dependencies": [
+        "modules/bootstrap",
+        "modules/l0-account-baseline",
+        "modules/l1-connect-instance",
+        "modules/l1-hours-of-operation"
+      ],
+      "state_key": "l1-queue-architecture/terraform.tfstate",
+      "domain_tfvars": "queues.tfvars",
+      "workspace_scoped": true,
+      "supports_destroy": true
+    },
+    {
+      "path": "modules/l1-contact-flow-framework",
+      "prd": "PRD-14",
+      "layer": 1,
+      "classification": "core-required",
+      "capability_packs": [
+        "core-telephony"
+      ],
+      "dependencies": [
+        "modules/bootstrap",
+        "modules/l0-account-baseline",
+        "modules/l1-connect-instance",
+        "modules/l1-phone-numbers",
+        "modules/l1-hours-of-operation",
+        "modules/l1-queue-architecture"
+      ],
+      "state_key": "l1-contact-flow-framework/terraform.tfstate",
+      "domain_tfvars": "contact-flows.tfvars",
+      "workspace_scoped": true,
+      "supports_destroy": true
+    },
+    {
+      "path": "modules/l1-number-portability-check",
+      "prd": "PRD-15",
+      "layer": 1,
+      "classification": "migration-only",
+      "capability_packs": [
+        "migration"
+      ],
+      "dependencies": [
+        "modules/bootstrap",
+        "modules/l0-account-baseline",
+        "modules/l0-audit-pipeline"
+      ],
+      "state_key": "l1-number-portability-check/terraform.tfstate",
+      "domain_tfvars": "portability.tfvars",
+      "workspace_scoped": true,
+      "supports_destroy": true
+    },
+    {
+      "path": "modules/l1-spam-reputation",
+      "prd": "PRD-16",
+      "layer": 2,
+      "classification": "optional-feature",
+      "capability_packs": [
+        "number-governance"
+      ],
+      "dependencies": [
+        "modules/bootstrap",
+        "modules/l0-account-baseline",
+        "modules/l1-phone-numbers"
+      ],
+      "state_key": "l1-spam-reputation/terraform.tfstate",
+      "domain_tfvars": "spam-reputation.tfvars",
+      "workspace_scoped": true,
+      "supports_destroy": true
+    },
+    {
+      "path": "modules/l1-cnam-registry",
+      "prd": "PRD-17",
+      "layer": 2,
+      "classification": "optional-feature",
+      "capability_packs": [
+        "number-governance"
+      ],
+      "dependencies": [
+        "modules/bootstrap",
+        "modules/l0-account-baseline",
+        "modules/l1-phone-numbers",
+        "modules/l1-spam-reputation"
+      ],
+      "state_key": "l1-cnam-registry/terraform.tfstate",
+      "domain_tfvars": "cnam-registry.tfvars",
+      "workspace_scoped": true,
+      "supports_destroy": true
+    },
+    {
+      "path": "modules/l1-e911-compliance",
+      "prd": "PRD-18",
+      "layer": 2,
+      "classification": "optional-feature",
+      "capability_packs": [
+        "number-governance"
+      ],
+      "dependencies": [
+        "modules/bootstrap",
+        "modules/l0-account-baseline",
+        "modules/l1-connect-instance",
+        "modules/l1-phone-numbers"
+      ],
+      "state_key": "l1-e911-compliance/terraform.tfstate",
+      "domain_tfvars": "e911-compliance.tfvars",
+      "workspace_scoped": true,
+      "supports_destroy": true
+    },
+    {
+      "path": "modules/l1-routing-drift",
+      "prd": "PRD-19",
+      "layer": 2,
+      "classification": "optional-feature",
+      "capability_packs": [
+        "number-governance"
+      ],
+      "dependencies": [
+        "modules/bootstrap",
+        "modules/l0-account-baseline",
+        "modules/l1-phone-numbers",
+        "modules/l1-contact-flow-framework"
+      ],
+      "state_key": "l1-routing-drift/terraform.tfstate",
+      "domain_tfvars": "routing-drift.tfvars",
+      "workspace_scoped": true,
+      "supports_destroy": true
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+# .github/workflows/tf-security-scan.yml
+# Reusable workflow. Caller: ci.yml
+# Runs tfsec and checkov. Fails on HIGH or CRITICAL findings.
+
+name: Terraform Security Scan
+
+on:
+  workflow_call:
+    inputs:
+      module_path:
+        required: true
+        type: string
+
+jobs:
+  tfsec:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          working_directory: connect-pbx/${{ inputs.module_path }}
+          soft_fail: false
+          format: lovely
+
+  checkov:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: connect-pbx/${{ inputs.module_path }}
+          soft_fail: false
+          output_format: cli
+          download_external_modules: true

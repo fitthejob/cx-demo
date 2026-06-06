@@ -1,0 +1,142 @@
+# .github/workflows/tf-drift-detect.yml
+# Scheduled workflow. Runs nightly at 00:00 UTC.
+# Detects drift between actual prod infrastructure and Terraform state.
+
+name: Terraform Drift Detection
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  load-modules:
+    runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.read.outputs.modules }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: read
+        shell: bash
+        run: |
+          MODULES=$(python "${{ github.workspace }}/connect-pbx/scripts/module_manifest.py" eligible-modules \
+            --catalog "${{ github.workspace }}/connect-pbx/modules/dependency-order.json" \
+            --manifest "${{ github.workspace }}/connect-pbx/environments/prod/deployment-manifest.json" \
+            --action plan | jq -R -s -c 'split("\n") | map(select(length > 0 and . != "modules/bootstrap"))')
+          echo "modules=${MODULES}" >> $GITHUB_OUTPUT
+
+  drift-detect:
+    needs: load-modules
+    runs-on: ubuntu-latest
+    environment: prod
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      matrix:
+        module: ${{ fromJson(needs.load-modules.outputs.modules) }}
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve module metadata
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          CATALOG="${{ github.workspace }}/connect-pbx/modules/dependency-order.json"
+          HELPER="${{ github.workspace }}/connect-pbx/scripts/module_manifest.py"
+          MODULE_PATH="${{ matrix.module }}"
+
+          STATE_KEY="$(python "${HELPER}" module-field --catalog "${CATALOG}" --module "${MODULE_PATH}" --field state_key | tr -d '\r')"
+          WORKSPACE_SCOPED="$(python "${HELPER}" module-field --catalog "${CATALOG}" --module "${MODULE_PATH}" --field workspace_scoped | tr -d '\r')"
+          DOMAIN_TFVARS_NAME="$(python "${HELPER}" module-field --catalog "${CATALOG}" --module "${MODULE_PATH}" --field domain_tfvars | tr -d '\r')"
+          WORKSPACE_NAME="default"
+          if [ "${WORKSPACE_SCOPED}" = "true" ]; then
+            WORKSPACE_NAME="prod"
+          fi
+
+          GLOBAL_TFVARS="${{ github.workspace }}/connect-pbx/environments/prod/global.tfvars"
+          DOMAIN_TFVARS_PATH=""
+          if [ -n "${DOMAIN_TFVARS_NAME}" ]; then
+            DOMAIN_TFVARS_PATH="${{ github.workspace }}/connect-pbx/environments/prod/${DOMAIN_TFVARS_NAME}"
+            if [ ! -f "${DOMAIN_TFVARS_PATH}" ]; then
+              echo "Missing required tfvars file: ${DOMAIN_TFVARS_PATH}" >&2
+              exit 1
+            fi
+          fi
+
+          echo "state_key=${STATE_KEY}" >> "${GITHUB_OUTPUT}"
+          echo "workspace_scoped=${WORKSPACE_SCOPED}" >> "${GITHUB_OUTPUT}"
+          echo "workspace_name=${WORKSPACE_NAME}" >> "${GITHUB_OUTPUT}"
+          echo "global_tfvars=${GLOBAL_TFVARS}" >> "${GITHUB_OUTPUT}"
+          echo "domain_tfvars_path=${DOMAIN_TFVARS_PATH}" >> "${GITHUB_OUTPUT}"
+
+      - name: Configure AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.TF_EXEC_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version_file: connect-pbx/.terraform-version
+
+      - name: Terraform Init
+        working-directory: connect-pbx/${{ matrix.module }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.STATE_BUCKET }}" \
+            -backend-config="key=${{ steps.metadata.outputs.state_key }}" \
+            -backend-config="region=${{ secrets.AWS_REGION }}" \
+            -backend-config="encrypt=true" \
+            -backend-config="kms_key_id=${{ secrets.ENV_KMS_KEY_ARN }}" \
+            -backend-config="dynamodb_table=${{ secrets.LOCK_TABLE }}"
+
+      - name: Select Workspace
+        if: steps.metadata.outputs.workspace_scoped == 'true'
+        working-directory: connect-pbx/${{ matrix.module }}
+        run: terraform workspace select ${{ steps.metadata.outputs.workspace_name }} || terraform workspace new ${{ steps.metadata.outputs.workspace_name }}
+
+      - name: Detect Drift
+        id: drift
+        working-directory: connect-pbx/${{ matrix.module }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLAN_ARGS=("-var-file=${{ steps.metadata.outputs.global_tfvars }}")
+          if [ -n "${{ steps.metadata.outputs.domain_tfvars_path }}" ]; then
+            PLAN_ARGS+=("-var-file=${{ steps.metadata.outputs.domain_tfvars_path }}")
+          fi
+
+          EXIT_CODE=0
+          terraform plan "${PLAN_ARGS[@]}" -detailed-exitcode -no-color 2>&1 || EXIT_CODE=$?
+          echo "exit_code=${EXIT_CODE}" >> $GITHUB_OUTPUT
+
+      - name: Write Drift Result to S3
+        if: always()
+        run: |
+          DATE=$(date -u +%Y/%m/%d)
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          DRIFTED=$([[ "${{ steps.drift.outputs.exit_code }}" == "2" ]] && echo "true" || echo "false")
+          MODULE_SLUG=$(echo "${{ matrix.module }}" | tr '/' '-')
+          printf '{"timestamp":"%s","module":"%s","environment":"prod","drifted":%s,"exit_code":"%s"}\n' \
+            "${TIMESTAMP}" \
+            "${{ matrix.module }}" \
+            "${DRIFTED}" \
+            "${{ steps.drift.outputs.exit_code }}" \
+            > drift-result.json
+          aws s3 cp drift-result.json \
+            "s3://${{ secrets.STATE_BUCKET }}/audit/drift/${DATE}/${MODULE_SLUG}-${{ github.run_id }}.json" \
+            --sse aws:kms \
+            --sse-kms-key-id "${{ secrets.ENV_KMS_KEY_ARN }}"
+
+      - name: Alert on Drift
+        if: steps.drift.outputs.exit_code == '2'
+        run: |
+          aws sns publish \
+            --topic-arn "${{ secrets.SNS_ALERT_TOPIC_ARN }}" \
+            --subject "DRIFT DETECTED: ${{ matrix.module }} in prod" \
+            --message "Drift detected in ${{ matrix.module }} (prod). Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

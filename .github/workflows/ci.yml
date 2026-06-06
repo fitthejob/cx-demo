@@ -1,0 +1,59 @@
+# .github/workflows/ci.yml
+# Manual single-module workflow for downstream PRDs.
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      module_path:
+        required: true
+        type: string
+
+jobs:
+  security-scan:
+    uses: ./.github/workflows/tf-security-scan.yml
+    with:
+      module_path: ${{ inputs.module_path }}
+
+  plan:
+    needs: security-scan
+    uses: ./.github/workflows/tf-plan.yml
+    with:
+      module_path: ${{ inputs.module_path }}
+      environment: ${{ inputs.environment }}
+    secrets: inherit
+
+  apply-dev:
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'dev'
+    needs: plan
+    uses: ./.github/workflows/tf-apply.yml
+    with:
+      module_path: ${{ inputs.module_path }}
+      environment: dev
+      plan_artifact_name: tfplan-${{ inputs.module_path }}-dev-${{ github.run_id }}
+    secrets: inherit
+
+  apply-staging:
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'staging'
+    needs: plan
+    uses: ./.github/workflows/tf-apply.yml
+    with:
+      module_path: ${{ inputs.module_path }}
+      environment: staging
+      plan_artifact_name: tfplan-${{ inputs.module_path }}-staging-${{ github.run_id }}
+    secrets: inherit
+
+  apply-prod:
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'prod'
+    needs: plan
+    uses: ./.github/workflows/tf-apply.yml
+    with:
+      module_path: ${{ inputs.module_path }}
+      environment: prod
+      plan_artifact_name: tfplan-${{ inputs.module_path }}-prod-${{ github.run_id }}
+    secrets: inherit

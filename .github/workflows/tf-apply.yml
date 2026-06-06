@@ -1,0 +1,120 @@
+# .github/workflows/tf-apply.yml
+# Downloads a plan artifact and applies it. Never re-plans.
+
+name: Terraform Apply
+
+on:
+  workflow_call:
+    inputs:
+      module_path:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+      plan_artifact_name:
+        required: true
+        type: string
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve module metadata
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          CATALOG="${{ github.workspace }}/connect-pbx/modules/dependency-order.json"
+          MANIFEST="${{ github.workspace }}/connect-pbx/environments/${{ inputs.environment }}/deployment-manifest.json"
+          HELPER="${{ github.workspace }}/connect-pbx/scripts/module_manifest.py"
+          MODULE_PATH="${{ inputs.module_path }}"
+
+          ELIGIBLE_MODULES="$(python "${HELPER}" eligible-modules --catalog "${CATALOG}" --manifest "${MANIFEST}" --action apply)"
+          if ! printf '%s\n' "${ELIGIBLE_MODULES}" | grep -Fxq "${MODULE_PATH}"; then
+            echo "Module is not eligible for apply in ${MANIFEST}: ${MODULE_PATH}" >&2
+            exit 1
+          fi
+
+          STATE_KEY="$(python "${HELPER}" module-field --catalog "${CATALOG}" --module "${MODULE_PATH}" --field state_key | tr -d '\r')"
+          WORKSPACE_SCOPED="$(python "${HELPER}" module-field --catalog "${CATALOG}" --module "${MODULE_PATH}" --field workspace_scoped | tr -d '\r')"
+          WORKSPACE_NAME="default"
+          if [ "${WORKSPACE_SCOPED}" = "true" ]; then
+            WORKSPACE_NAME="${{ inputs.environment }}"
+          fi
+
+          echo "state_key=${STATE_KEY}" >> "${GITHUB_OUTPUT}"
+          echo "workspace_scoped=${WORKSPACE_SCOPED}" >> "${GITHUB_OUTPUT}"
+          echo "workspace_name=${WORKSPACE_NAME}" >> "${GITHUB_OUTPUT}"
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.TF_EXEC_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version_file: connect-pbx/.terraform-version
+
+      - name: Download Plan Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.plan_artifact_name }}
+          path: connect-pbx/${{ inputs.module_path }}
+
+      - name: Terraform Init
+        working-directory: connect-pbx/${{ inputs.module_path }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.STATE_BUCKET }}" \
+            -backend-config="key=${{ steps.metadata.outputs.state_key }}" \
+            -backend-config="region=${{ secrets.AWS_REGION }}" \
+            -backend-config="encrypt=true" \
+            -backend-config="kms_key_id=${{ secrets.ENV_KMS_KEY_ARN }}" \
+            -backend-config="dynamodb_table=${{ secrets.LOCK_TABLE }}"
+
+      - name: Select Workspace
+        if: steps.metadata.outputs.workspace_scoped == 'true'
+        working-directory: connect-pbx/${{ inputs.module_path }}
+        run: terraform workspace select ${{ steps.metadata.outputs.workspace_name }}
+
+      - name: Terraform Apply
+        id: apply
+        working-directory: connect-pbx/${{ inputs.module_path }}
+        run: terraform apply -auto-approve tfplan.binary
+        continue-on-error: true
+
+      - name: Write Deploy Audit Log
+        if: always()
+        run: |
+          DATE=$(date -u +%Y/%m/%d)
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          printf '{"timestamp":"%s","github_run_id":"%s","github_actor":"%s","environment":"%s","module_path":"%s","workspace":"%s","outcome":"%s","plan_artifact":"%s","workflow_run_url":"%s"}\n' \
+            "${TIMESTAMP}" \
+            "${{ github.run_id }}" \
+            "${{ github.actor }}" \
+            "${{ inputs.environment }}" \
+            "${{ inputs.module_path }}" \
+            "${{ steps.metadata.outputs.workspace_name }}" \
+            "${{ steps.apply.outcome }}" \
+            "${{ inputs.plan_artifact_name }}" \
+            "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            > audit-entry.json
+
+          aws s3 cp audit-entry.json \
+            "s3://${{ secrets.STATE_BUCKET }}/audit/deployments/${{ inputs.environment }}/${DATE}/${{ github.run_id }}.json" \
+            --sse aws:kms \
+            --sse-kms-key-id "${{ secrets.ENV_KMS_KEY_ARN }}"
+
+      - name: Fail if Apply Failed
+        if: steps.apply.outcome == 'failure'
+        run: exit 1

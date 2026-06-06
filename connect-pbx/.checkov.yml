@@ -1,0 +1,9 @@
+# Checkov skip list — checks suppressed with justification
+#
+# CKV2_AWS_62  – S3 event notifications: not needed for state/log buckets
+# CKV_AWS_144  – S3 cross-region replication: single-region state is acceptable;
+#                replication adds cost with no DR benefit at this stage
+
+skip-check:
+  - CKV2_AWS_62
+  - CKV_AWS_144

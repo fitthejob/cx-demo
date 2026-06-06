@@ -1,0 +1,126 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "a1b2c3d4-1402-0001-0001-000000000001",
+  "Metadata": {
+    "entryPointPosition": { "x": 40, "y": 40 },
+    "ActionMetadata": {
+      "a1b2c3d4-1402-0001-0001-000000000001": { "position": { "x": 40, "y": 40 } },
+      "a1b2c3d4-1402-0002-0001-000000000001": { "position": { "x": 290, "y": 40 } },
+      "a1b2c3d4-1402-0003-0001-000000000001": { "position": { "x": 540, "y": 40 } },
+      "a1b2c3d4-1402-0004-0001-000000000001": { "position": { "x": 540, "y": 240 } },
+      "a1b2c3d4-1402-0005-0001-000000000001": { "position": { "x": 790, "y": 40 } },
+      "a1b2c3d4-1402-0006-0001-000000000001": { "position": { "x": 790, "y": 240 } },
+      "a1b2c3d4-1402-0007-0001-000000000001": { "position": { "x": 1040, "y": 140 } }
+    },
+    "Annotations": []
+  },
+  "Actions": [
+    {
+      "Identifier": "a1b2c3d4-1402-0001-0001-000000000001",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Text": "${prompt_after_hours}"
+      },
+      "Transitions": {
+        "NextAction": "a1b2c3d4-1402-0002-0001-000000000001",
+        "Errors": [
+          { "NextAction": "a1b2c3d4-1402-0007-0001-000000000001", "ErrorType": "NoMatchingError" }
+        ],
+        "Conditions": []
+      }
+    },
+    {
+      "Identifier": "a1b2c3d4-1402-0002-0001-000000000001",
+      "Type": "GetParticipantInput",
+      "Parameters": {
+        "Text": "${prompt_callback_offer}",
+        "InputTimeLimitSeconds": "10",
+        "StoreInput": "False"
+      },
+      "Transitions": {
+        "NextAction": "a1b2c3d4-1402-0004-0001-000000000001",
+        "Errors": [
+          { "NextAction": "a1b2c3d4-1402-0004-0001-000000000001", "ErrorType": "InputTimeLimitExceeded" },
+          { "NextAction": "a1b2c3d4-1402-0004-0001-000000000001", "ErrorType": "NoMatchingCondition" },
+          { "NextAction": "a1b2c3d4-1402-0004-0001-000000000001", "ErrorType": "NoMatchingError" }
+        ],
+        "Conditions": [
+          {
+            "NextAction": "a1b2c3d4-1402-0003-0001-000000000001",
+            "Condition": { "Operator": "Equals", "Operands": ["1"] }
+          },
+          {
+            "NextAction": "a1b2c3d4-1402-0004-0001-000000000001",
+            "Condition": { "Operator": "Equals", "Operands": ["2"] }
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "a1b2c3d4-1402-0003-0001-000000000001",
+      "Type": "UpdateContactAttributes",
+      "Parameters": {
+        "Attributes": {
+          "after_hours_action": "CALLBACK"
+        }
+      },
+      "Transitions": {
+        "NextAction": "a1b2c3d4-1402-0005-0001-000000000001",
+        "Errors": [
+          { "NextAction": "a1b2c3d4-1402-0007-0001-000000000001", "ErrorType": "NoMatchingError" }
+        ],
+        "Conditions": []
+      }
+    },
+    {
+      "Identifier": "a1b2c3d4-1402-0004-0001-000000000001",
+      "Type": "UpdateContactAttributes",
+      "Parameters": {
+        "Attributes": {
+          "after_hours_action": "VOICEMAIL"
+        }
+      },
+      "Transitions": {
+        "NextAction": "a1b2c3d4-1402-0006-0001-000000000001",
+        "Errors": [
+          { "NextAction": "a1b2c3d4-1402-0007-0001-000000000001", "ErrorType": "NoMatchingError" }
+        ],
+        "Conditions": []
+      }
+    },
+    {
+      "Identifier": "a1b2c3d4-1402-0005-0001-000000000001",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Text": "We are not accepting callback requests right now. ${prompt_goodbye}"
+      },
+      "Transitions": {
+        "NextAction": "a1b2c3d4-1402-0007-0001-000000000001",
+        "Errors": [
+          { "NextAction": "a1b2c3d4-1402-0007-0001-000000000001", "ErrorType": "NoMatchingError" }
+        ],
+        "Conditions": []
+      }
+    },
+    {
+      "Identifier": "a1b2c3d4-1402-0006-0001-000000000001",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Text": "${prompt_voicemail_unavailable} ${prompt_goodbye}"
+      },
+      "Transitions": {
+        "NextAction": "a1b2c3d4-1402-0007-0001-000000000001",
+        "Errors": [
+          { "NextAction": "a1b2c3d4-1402-0007-0001-000000000001", "ErrorType": "NoMatchingError" }
+        ],
+        "Conditions": []
+      }
+    },
+    {
+      "Identifier": "a1b2c3d4-1402-0007-0001-000000000001",
+      "Type": "DisconnectParticipant",
+      "Parameters": {},
+      "Transitions": {}
+    }
+  ]
+}

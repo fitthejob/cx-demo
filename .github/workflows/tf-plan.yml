@@ -1,0 +1,170 @@
+# .github/workflows/tf-plan.yml
+# Reusable workflow. Caller: ci.yml
+# Runs terraform plan and posts output as a PR comment.
+
+name: Terraform Plan
+
+on:
+  workflow_call:
+    inputs:
+      module_path:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve module metadata
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          CATALOG="${{ github.workspace }}/connect-pbx/modules/dependency-order.json"
+          MANIFEST="${{ github.workspace }}/connect-pbx/environments/${{ inputs.environment }}/deployment-manifest.json"
+          HELPER="${{ github.workspace }}/connect-pbx/scripts/module_manifest.py"
+          MODULE_PATH="${{ inputs.module_path }}"
+
+          ELIGIBLE_MODULES="$(python "${HELPER}" eligible-modules --catalog "${CATALOG}" --manifest "${MANIFEST}" --action plan)"
+          if ! printf '%s\n' "${ELIGIBLE_MODULES}" | grep -Fxq "${MODULE_PATH}"; then
+            echo "Module is not eligible for plan in ${MANIFEST}: ${MODULE_PATH}" >&2
+            exit 1
+          fi
+
+          STATE_KEY="$(python "${HELPER}" module-field --catalog "${CATALOG}" --module "${MODULE_PATH}" --field state_key | tr -d '\r')"
+          WORKSPACE_SCOPED="$(python "${HELPER}" module-field --catalog "${CATALOG}" --module "${MODULE_PATH}" --field workspace_scoped | tr -d '\r')"
+          DOMAIN_TFVARS_NAME="$(python "${HELPER}" module-field --catalog "${CATALOG}" --module "${MODULE_PATH}" --field domain_tfvars | tr -d '\r')"
+          WORKSPACE_NAME="default"
+          if [ "${WORKSPACE_SCOPED}" = "true" ]; then
+            WORKSPACE_NAME="${{ inputs.environment }}"
+          fi
+
+          GLOBAL_TFVARS="${{ github.workspace }}/connect-pbx/environments/${{ inputs.environment }}/global.tfvars"
+          DOMAIN_TFVARS_PATH=""
+          if [ -n "${DOMAIN_TFVARS_NAME}" ]; then
+            DOMAIN_TFVARS_PATH="${{ github.workspace }}/connect-pbx/environments/${{ inputs.environment }}/${DOMAIN_TFVARS_NAME}"
+            if [ ! -f "${DOMAIN_TFVARS_PATH}" ]; then
+              echo "Missing required tfvars file: ${DOMAIN_TFVARS_PATH}" >&2
+              exit 1
+            fi
+          fi
+
+          echo "state_key=${STATE_KEY}" >> "${GITHUB_OUTPUT}"
+          echo "workspace_scoped=${WORKSPACE_SCOPED}" >> "${GITHUB_OUTPUT}"
+          echo "workspace_name=${WORKSPACE_NAME}" >> "${GITHUB_OUTPUT}"
+          echo "global_tfvars=${GLOBAL_TFVARS}" >> "${GITHUB_OUTPUT}"
+          echo "domain_tfvars_path=${DOMAIN_TFVARS_PATH}" >> "${GITHUB_OUTPUT}"
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.TF_EXEC_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version_file: connect-pbx/.terraform-version
+
+      - name: Terraform Init
+        working-directory: connect-pbx/${{ inputs.module_path }}
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.STATE_BUCKET }}" \
+            -backend-config="key=${{ steps.metadata.outputs.state_key }}" \
+            -backend-config="region=${{ secrets.AWS_REGION }}" \
+            -backend-config="encrypt=true" \
+            -backend-config="kms_key_id=${{ secrets.ENV_KMS_KEY_ARN }}" \
+            -backend-config="dynamodb_table=${{ secrets.LOCK_TABLE }}"
+
+      - name: Select Workspace
+        if: steps.metadata.outputs.workspace_scoped == 'true'
+        working-directory: connect-pbx/${{ inputs.module_path }}
+        run: |
+          terraform workspace select ${{ steps.metadata.outputs.workspace_name }} \
+            || terraform workspace new ${{ steps.metadata.outputs.workspace_name }}
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: connect-pbx/${{ inputs.module_path }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          PLAN_ARGS=("-var-file=${{ steps.metadata.outputs.global_tfvars }}")
+          if [ -n "${{ steps.metadata.outputs.domain_tfvars_path }}" ]; then
+            PLAN_ARGS+=("-var-file=${{ steps.metadata.outputs.domain_tfvars_path }}")
+          fi
+
+          terraform plan \
+            "${PLAN_ARGS[@]}" \
+            -out=tfplan.binary \
+            -no-color 2>&1 | tee plan.txt
+        continue-on-error: true
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ inputs.module_path }}-${{ inputs.environment }}-${{ github.run_id }}
+          path: connect-pbx/${{ inputs.module_path }}/tfplan.binary
+          retention-days: 30
+
+      - name: Post Plan to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('connect-pbx/${{ inputs.module_path }}/plan.txt', 'utf-8');
+            const hasDestructions = plan.includes(' destroy');
+            const warning = hasDestructions
+              ? '> **WARNING: This plan includes resource destructions. Review carefully.**\n\n'
+              : '';
+            const body = [
+              '## Terraform Plan - `${{ inputs.module_path }}` -> `${{ inputs.environment }}`',
+              warning,
+              '<details><summary>Full Plan Output</summary>',
+              '',
+              '```',
+              plan.substring(0, 60000),
+              '```',
+              '</details>',
+              '',
+              `[Full workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})`
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number
+            });
+            const existing = comments.find(c =>
+              c.body.includes('Terraform Plan') &&
+              c.body.includes('${{ inputs.module_path }}') &&
+              c.body.includes('${{ inputs.environment }}')
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body
+              });
+            }

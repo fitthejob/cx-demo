@@ -1,0 +1,81 @@
+# .github/workflows/tf-auto-deploy-dev.yml
+# FR-005: Auto-deploy all eligible modules to dev on merge to main.
+# Runs security scan -> plan -> apply for every enabled module in dependency order.
+
+name: Auto Deploy Dev
+
+'on':
+  # Auto-deploy disabled; deploying locally for now.
+  # To re-enable, restore the push trigger below.
+  workflow_dispatch:
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - "connect-pbx/modules/**"
+  #     - "connect-pbx/environments/dev/**"
+  #     - "connect-pbx/scripts/**"
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  resolve-modules:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.resolve.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Resolve eligible dev modules in dependency order
+        id: resolve
+        run: |
+          MODULES=$(python "${{ github.workspace }}/connect-pbx/scripts/module_manifest.py" eligible-modules \
+            --catalog "${{ github.workspace }}/connect-pbx/modules/dependency-order.json" \
+            --manifest "${{ github.workspace }}/connect-pbx/environments/dev/deployment-manifest.json" \
+            --action plan | jq -R -s -c 'split("\n") | map(select(length > 0 and . != "modules/bootstrap"))')
+          if [ "${MODULES}" = "[]" ] || [ -z "${MODULES}" ]; then
+            echo "No eligible modules for dev auto-deploy."
+            echo "matrix=[]" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "matrix=${MODULES}" >> $GITHUB_OUTPUT
+
+  security-scan:
+    needs: resolve-modules
+    if: needs.resolve-modules.outputs.matrix != '[]'
+    strategy:
+      matrix:
+        module_path: ${{ fromJson(needs.resolve-modules.outputs.matrix) }}
+      fail-fast: false
+    uses: ./.github/workflows/tf-security-scan.yml
+    with:
+      module_path: ${{ matrix.module_path }}
+
+  plan:
+    needs: [resolve-modules, security-scan]
+    if: needs.resolve-modules.outputs.matrix != '[]'
+    strategy:
+      matrix:
+        module_path: ${{ fromJson(needs.resolve-modules.outputs.matrix) }}
+      fail-fast: false
+    uses: ./.github/workflows/tf-plan.yml
+    with:
+      module_path: ${{ matrix.module_path }}
+      environment: dev
+    secrets: inherit
+
+  apply:
+    needs: [resolve-modules, plan]
+    if: needs.resolve-modules.outputs.matrix != '[]'
+    strategy:
+      matrix:
+        module_path: ${{ fromJson(needs.resolve-modules.outputs.matrix) }}
+      fail-fast: false
+    uses: ./.github/workflows/tf-apply.yml
+    with:
+      module_path: ${{ matrix.module_path }}
+      environment: dev
+      plan_artifact_name: tfplan-${{ matrix.module_path }}-dev-${{ github.run_id }}
+    secrets: inherit

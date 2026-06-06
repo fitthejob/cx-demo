@@ -1,0 +1,34 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "a1b2c3d4-1404-0001-0001-000000000001",
+  "Metadata": {
+    "entryPointPosition": { "x": 40, "y": 40 },
+    "ActionMetadata": {
+      "a1b2c3d4-1404-0001-0001-000000000001": { "position": { "x": 40, "y": 40 } },
+      "a1b2c3d4-1404-0002-0001-000000000001": { "position": { "x": 290, "y": 40 } }
+    },
+    "Annotations": []
+  },
+  "Actions": [
+    {
+      "Identifier": "a1b2c3d4-1404-0001-0001-000000000001",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Text": "${prompt_error} ${prompt_goodbye}"
+      },
+      "Transitions": {
+        "NextAction": "a1b2c3d4-1404-0002-0001-000000000001",
+        "Errors": [
+          { "NextAction": "a1b2c3d4-1404-0002-0001-000000000001", "ErrorType": "NoMatchingError" }
+        ],
+        "Conditions": []
+      }
+    },
+    {
+      "Identifier": "a1b2c3d4-1404-0002-0001-000000000001",
+      "Type": "DisconnectParticipant",
+      "Parameters": {},
+      "Transitions": {}
+    }
+  ]
+}

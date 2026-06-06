@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Connect PBX Dashboard</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">AWS Connect</p>
+          <h1>CCaaS Deployment Dashboard</h1>
+        </div>
+        <div class="hero-status-stack">
+          <div class="hero-status" id="runnerStatus">Checking runner...</div>
+          <div class="hero-status-detail hidden" id="runnerStatusDetail"></div>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="panel controls">
+          <div class="panel-header">
+            <h2>Environment</h2>
+          </div>
+          <div class="control-row">
+            <label for="environmentSelect">Manifest</label>
+            <select id="environmentSelect"></select>
+            <button id="refreshButton" type="button">Refresh</button>
+          </div>
+          <div class="info-list">
+            <div><span>Profile</span><strong id="manifestProfile">-</strong></div>
+            <div><span>AWS profile</span><strong id="awsProfile">-</strong></div>
+            <div><span>Manifest packs</span><strong id="packSummary">-</strong></div>
+            <div><span>Manifest modules</span><strong id="enabledCount">0</strong></div>
+            <div><span>Live deployed</span><strong id="deployedCount">0</strong></div>
+            <div><span>Live state</span><strong id="envStateSummary">-</strong></div>
+          </div>
+        </section>
+
+        <section class="panel module-browser">
+          <div class="panel-header">
+            <h2>Capability Pack Selection</h2>
+            <div class="button-row">
+              <button id="selectAllButton" type="button">Select all enabled</button>
+              <button id="clearButton" type="button">Clear</button>
+            </div>
+          </div>
+          <div class="search-row">
+            <input id="moduleSearch" type="search" placeholder="Filter by PRD, module path, or pack">
+          </div>
+          <div class="module-list" id="moduleList"></div>
+        </section>
+
+        <section class="panel preview">
+          <div class="panel-header">
+            <h2>Dependency Preview</h2>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-card">
+              <span id="requestedSummaryLabel">Requested</span>
+              <strong id="requestedCount">0</strong>
+            </div>
+            <div class="summary-card">
+              <span id="autoAddedSummaryLabel">Auto-added dependencies</span>
+              <strong id="autoAddedCount">0</strong>
+            </div>
+            <div class="summary-card">
+              <span id="executionSummaryLabel">Execution order</span>
+              <strong id="executionCount">0</strong>
+            </div>
+          </div>
+          <div id="resolutionError" class="callout error hidden"></div>
+          <div id="resolutionInfo" class="callout info hidden"></div>
+          <div id="resolutionWarnings" class="callout warning hidden"></div>
+          <div class="preview-columns">
+            <div>
+              <h3 id="requestedHeading">Requested selections</h3>
+              <ul id="requestedList" class="preview-list"></ul>
+            </div>
+            <div>
+              <h3 id="autoAddedHeading">Auto-added dependencies</h3>
+              <ul id="dependencyList" class="preview-list"></ul>
+            </div>
+            <div>
+              <h3 id="executionHeading">Execution order</h3>
+              <ol id="executionList" class="preview-list ordered"></ol>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel runner-panel">
+          <div id="runMeta" class="run-meta">
+            <div class="run-meta-layout">
+              <div id="runMetaContent" class="run-meta-content">
+                <strong>RUN STATUS</strong>
+                <br>
+                Status: <strong>idle</strong>
+              </div>
+              <div id="actionAvailability" class="action-availability callout info hidden"></div>
+              <div class="button-row run-mode-row">
+                <button id="deployModeButton" type="button" class="mode-toggle deploy-mode-toggle active">Deploy Mode</button>
+                <button id="destroyModeButton" type="button" class="mode-toggle destroy-mode-toggle">Destroy Mode</button>
+              </div>
+            </div>
+          </div>
+          <div class="run-log-shell">
+            <div class="button-row run-action-row">
+              <button id="planButton" type="button">Run Plan</button>
+              <button id="applyButton" type="button" class="primary">Run Apply</button>
+              <button id="destroyButton" type="button" class="danger">Run Destroy</button>
+            </div>
+            <div id="runApprovalOverlay" class="run-approval-overlay hidden">
+              <div class="run-approval-card">
+                <div class="run-approval-title">Explicit approval required</div>
+                <div id="runApprovalCopy" class="run-approval-copy"></div>
+                <label class="run-approval-label" for="runApprovalInput">
+                  Type <code id="runApprovalPhrase">EMPTY AUDIT BUCKETS</code> to continue.
+                </label>
+                <input id="runApprovalInput" type="text" autocomplete="off" spellcheck="false">
+                <div class="button-row run-approval-actions">
+                  <button id="runApprovalCancelButton" type="button">Cancel</button>
+                  <button id="runApprovalConfirmButton" type="button" class="danger">Approve Destroy</button>
+                </div>
+              </div>
+            </div>
+            <pre id="runLog" class="run-log">Connecting to dashboard and checking for an active run...</pre>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="/app.js"></script>
+  </body>
+  </html>
