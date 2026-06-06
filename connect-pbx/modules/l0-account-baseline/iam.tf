@@ -29,6 +29,15 @@ locals {
     "arn:aws:connect:${var.aws_region}:${data.aws_caller_identity.current.account_id}:phone-number/*",
   ]
 
+  project_connect_read_arns = [
+    "arn:aws:connect:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*",
+    "arn:aws:connect:${var.aws_region}:${data.aws_caller_identity.current.account_id}:traffic-distribution-group/*",
+  ]
+
+  project_connect_wildcard_phone_arns = [
+    "arn:aws:connect:${var.aws_region}:*:phone-number/*",
+  ]
+
   project_log_group_arns = [
     "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.org_name}-*",
     "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.org_name}-*:*",
@@ -50,6 +59,14 @@ locals {
 
   project_ses_identity_arns = [
     "arn:aws:ses:${var.aws_region}:${data.aws_caller_identity.current.account_id}:identity/*",
+  ]
+
+  project_config_rule_arns = [
+    "arn:aws:config:${var.aws_region}:${data.aws_caller_identity.current.account_id}:config-rule/*",
+  ]
+
+  project_securityhub_hub_arns = [
+    "arn:aws:securityhub:${var.aws_region}:${data.aws_caller_identity.current.account_id}:hub/default",
   ]
 }
 
@@ -118,13 +135,20 @@ resource "aws_iam_policy" "platform_boundary" {
         Resource = local.project_connect_manage_arns
       },
       {
-        Sid    = "AllowConnectReadOnlyListCalls"
+        Sid    = "AllowConnectListUsers"
+        Effect = "Allow"
+        Action = [
+          "connect:ListUsers",
+        ]
+        Resource = local.project_connect_read_arns
+      },
+      {
+        Sid    = "AllowConnectListPhoneNumbers"
         Effect = "Allow"
         Action = [
           "connect:ListPhoneNumbersV2",
-          "connect:ListUsers",
         ]
-        Resource = "*"
+        Resource = local.project_connect_wildcard_phone_arns
       },
       {
         Sid    = "AllowSESOutboundMail"
@@ -195,16 +219,37 @@ resource "aws_iam_policy" "platform_boundary" {
         }
       },
       {
-        Sid    = "AllowAuditReadOnlyQueries"
+        Sid    = "AllowCloudTrailLookupEvents"
         Effect = "Allow"
         Action = [
           "cloudtrail:LookupEvents",
-          "config:DescribeComplianceByConfigRule",
-          "config:DescribeConfigurationRecorderStatus",
-          "config:GetDiscoveredResourceCounts",
-          "securityhub:GetFindings",
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "AllowConfigRuleComplianceRead"
+        Effect = "Allow"
+        Action = [
+          "config:DescribeComplianceByConfigRule",
+        ]
+        Resource = local.project_config_rule_arns
+      },
+      {
+        Sid    = "AllowConfigAndSecurityHubReadOnlyQueries"
+        Effect = "Allow"
+        Action = [
+          "config:DescribeConfigurationRecorderStatus",
+          "config:GetDiscoveredResourceCounts",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowSecurityHubFindingsRead"
+        Effect = "Allow"
+        Action = [
+          "securityhub:GetFindings",
+        ]
+        Resource = local.project_securityhub_hub_arns
       },
       {
         Sid    = "AllowXRayTelemetry"
