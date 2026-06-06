@@ -121,8 +121,8 @@ def bootstrap_artifact_dir() -> Path:
     if os.environ.get("CONNECT_PBX_BOOTSTRAP_DIR"):
         return Path(os.environ["CONNECT_PBX_BOOTSTRAP_DIR"])
     if os.environ.get("LOCALAPPDATA"):
-        return Path(os.environ["LOCALAPPDATA"]) / "connect-pbx" / "bootstrap"
-    return Path.home() / ".connect-pbx" / "bootstrap"
+        return Path(os.environ["LOCALAPPDATA"]) / "connect-pbx" / REPO_ROOT.name / "bootstrap"
+    return Path.home() / ".connect-pbx" / REPO_ROOT.name / "bootstrap"
 
 
 def backend_config_path() -> Path:

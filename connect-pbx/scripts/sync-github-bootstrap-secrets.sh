@@ -2,13 +2,14 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ARTIFACT_REPO_SLUG="$(basename "${REPO_ROOT}")"
 
 if [[ -n "${CONNECT_PBX_BOOTSTRAP_DIR:-}" ]]; then
   BOOTSTRAP_ARTIFACT_DIR="${CONNECT_PBX_BOOTSTRAP_DIR}"
 elif [[ -n "${LOCALAPPDATA:-}" ]]; then
-  BOOTSTRAP_ARTIFACT_DIR="${LOCALAPPDATA}/connect-pbx/bootstrap"
+  BOOTSTRAP_ARTIFACT_DIR="${LOCALAPPDATA}/connect-pbx/${ARTIFACT_REPO_SLUG}/bootstrap"
 else
-  BOOTSTRAP_ARTIFACT_DIR="${HOME}/.connect-pbx/bootstrap"
+  BOOTSTRAP_ARTIFACT_DIR="${HOME}/.connect-pbx/${ARTIFACT_REPO_SLUG}/bootstrap"
 fi
 
 ENVIRONMENT=""

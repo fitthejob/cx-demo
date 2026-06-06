@@ -49,6 +49,9 @@ python dashboard/app.py --host 127.0.0.1 --port 8765
 
 - The backend expects Git Bash to be installed because it shells into
   `scripts/tf-run.sh`.
+- Bootstrap backend artifacts are resolved per repo by default under
+  `${LOCALAPPDATA}/connect-pbx/<repo_slug>/bootstrap`, unless
+  `CONNECT_PBX_BOOTSTRAP_DIR` is set.
 - The dashboard sets `CONNECT_PBX_NONINTERACTIVE=1` for its own runs so the
   existing runner can execute without prompt loops.
 - Manual CLI usage of `tf-run.sh` is unchanged.

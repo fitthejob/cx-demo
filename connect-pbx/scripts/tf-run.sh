@@ -2,6 +2,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_SLUG="$(basename "${REPO_ROOT}")"
 ENVIRONMENTS_ROOT="${REPO_ROOT}/environments"
 MODULE_CATALOG="${REPO_ROOT}/modules/dependency-order.json"
 MANIFEST_HELPER="${REPO_ROOT}/scripts/module_manifest.py"
@@ -10,9 +11,9 @@ NONINTERACTIVE="${CONNECT_PBX_NONINTERACTIVE:-0}"
 if [[ -n "${CONNECT_PBX_BOOTSTRAP_DIR:-}" ]]; then
   BOOTSTRAP_ARTIFACT_DIR="${CONNECT_PBX_BOOTSTRAP_DIR}"
 elif [[ -n "${LOCALAPPDATA:-}" ]]; then
-  BOOTSTRAP_ARTIFACT_DIR="${LOCALAPPDATA}/connect-pbx/bootstrap"
+  BOOTSTRAP_ARTIFACT_DIR="${LOCALAPPDATA}/connect-pbx/${REPO_SLUG}/bootstrap"
 else
-  BOOTSTRAP_ARTIFACT_DIR="${HOME}/.connect-pbx/bootstrap"
+  BOOTSTRAP_ARTIFACT_DIR="${HOME}/.connect-pbx/${REPO_SLUG}/bootstrap"
 fi
 
 ACTION="${1:-}"

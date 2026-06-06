@@ -103,7 +103,7 @@ phone_numbers = {
 export AWS_PROFILE=<aws_profile_dev>
 cd connect-pbx/modules/l1-phone-numbers
 
-BOOTSTRAP_DIR="${CONNECT_PBX_BOOTSTRAP_DIR:-${LOCALAPPDATA}/connect-pbx/bootstrap}"
+BOOTSTRAP_DIR="${CONNECT_PBX_BOOTSTRAP_DIR:-${LOCALAPPDATA}/connect-pbx/<repo_slug>/bootstrap}"
 terraform init -backend-config="${BOOTSTRAP_DIR}/backend-<aws_profile_dev>.hcl"
 terraform workspace select dev
 

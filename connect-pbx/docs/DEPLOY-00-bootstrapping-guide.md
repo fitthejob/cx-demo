@@ -156,10 +156,18 @@ The script executes five stages:
 | **1/5 — Init** | `terraform init` with local backend |
 | **2/5 — Apply** | Creates S3 bucket, DynamoDB table, KMS key, IAM roles — state written to `bootstrap.tfstate` locally |
 | **3/5 — Capture outputs** | Reads bucket name, KMS key ARN, lock table name from local state |
-| **4/5 — Migrate** | Patches `backend.tf` to S3, runs `terraform init -migrate-state` to copy local state to the new remote backend |
+| **4/5 — Migrate** | Patches `backend.tf` to S3, writes a local backend artifact file for dashboard/runners, and runs `terraform init -migrate-state` to copy local state to the new remote backend |
 | **5/5 — Verify** | Runs `terraform state list` against the remote backend to confirm state is readable |
 
 The script will exit non-zero and stop at the failed stage if any step fails.
+
+After a successful run, the script also writes a profile-scoped backend artifact file outside the repo:
+
+- Windows Git Bash: `${LOCALAPPDATA}/connect-pbx/<repo_slug>/bootstrap/backend-<aws_profile>.hcl`
+- fallback: `${HOME}/.connect-pbx/<repo_slug>/bootstrap/backend-<aws_profile>.hcl`
+- override: `CONNECT_PBX_BOOTSTRAP_DIR`
+
+This file is consumed by the dashboard and local runner scripts. It is local machine state and should not be committed.
 
 ---
 
@@ -446,11 +454,14 @@ terraform destroy -var-file="bootstrap.tfvars"
 
 Review the plan carefully — confirm it lists only bootstrap resources before approving.
 
-#### Phase 5 — Clean up local state and revert s3.tf
+#### Phase 5 — Clean up local state, bootstrap artifacts, and revert s3.tf
 
 ```bash
 # Remove local state files
 rm -f bootstrap.tfstate bootstrap.tfstate.backup
+
+# Remove the generated backend artifact for this AWS profile
+rm -f "${CONNECT_PBX_BOOTSTRAP_DIR:-${LOCALAPPDATA}/connect-pbx/<repo_slug>/bootstrap}/backend-${AWS_PROFILE:-default}.hcl"
 
 # Remove the .terraform directory
 rm -rf .terraform
@@ -459,7 +470,7 @@ rm -rf .terraform
 rm -f .terraform.lock.hcl
 ```
 
-Revert `prevent_destroy` back to `true` in `s3.tf` and revert `backend.tf` back to the Phase 1 local backend before committing, so the module is in a clean re-deployable state.
+Revert `prevent_destroy` back to `true` in `s3.tf` and revert `backend.tf` back to the Phase 1 local backend before committing, so the module is in a clean re-deployable state. Removing the backend artifact file ensures the dashboard and local runners do not keep pointing at a backend that no longer exists.
 
 #### Phase 6 — Verify clean environment
 

@@ -163,6 +163,11 @@ Optional flags:
 - `--repo <owner/name>` if you want to target a repository other than the current `gh` context
 - `--backend-config <path>` if your backend file lives outside the default bootstrap artifact directory
 
+By default, the bootstrap artifact directory is repo-scoped:
+
+- Windows Git Bash: `${LOCALAPPDATA}/connect-pbx/<repo_slug>/bootstrap`
+- fallback: `${HOME}/.connect-pbx/<repo_slug>/bootstrap`
+
 This helper intentionally does not read `modules/l0-account-baseline` and does not write `ENV_KMS_KEY_ARN`.
 
 ---
