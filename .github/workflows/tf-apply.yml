@@ -20,6 +20,9 @@ jobs:
   apply:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    env:
+      TF_INPUT: "0"
+      TF_VAR_state_bucket: ${{ secrets.STATE_BUCKET }}
     permissions:
       id-token: write
       contents: read
@@ -90,7 +93,7 @@ jobs:
       - name: Terraform Apply
         id: apply
         working-directory: connect-pbx/${{ inputs.module_path }}
-        run: terraform apply -auto-approve tfplan.binary
+        run: terraform apply -input=false -auto-approve tfplan.binary
         continue-on-error: true
 
       - name: Write Deploy Audit Log

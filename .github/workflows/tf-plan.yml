@@ -18,6 +18,9 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    env:
+      TF_INPUT: "0"
+      TF_VAR_state_bucket: ${{ secrets.STATE_BUCKET }}
     permissions:
       id-token: write
       contents: read
@@ -108,6 +111,7 @@ jobs:
 
           terraform plan \
             "${PLAN_ARGS[@]}" \
+            -input=false \
             -out=tfplan.binary \
             -no-color 2>&1 | tee plan.txt
         continue-on-error: true

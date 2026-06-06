@@ -29,6 +29,9 @@ jobs:
     needs: load-modules
     runs-on: ubuntu-latest
     environment: prod
+    env:
+      TF_INPUT: "0"
+      TF_VAR_state_bucket: ${{ secrets.STATE_BUCKET }}
     permissions:
       id-token: write
       contents: read
@@ -112,7 +115,7 @@ jobs:
           fi
 
           EXIT_CODE=0
-          terraform plan "${PLAN_ARGS[@]}" -detailed-exitcode -no-color 2>&1 || EXIT_CODE=$?
+          terraform plan "${PLAN_ARGS[@]}" -input=false -detailed-exitcode -no-color 2>&1 || EXIT_CODE=$?
           echo "exit_code=${EXIT_CODE}" >> $GITHUB_OUTPUT
 
       - name: Write Drift Result to S3
