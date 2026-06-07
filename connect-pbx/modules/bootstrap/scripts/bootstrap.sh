@@ -16,6 +16,8 @@ PROFILE_NAME="${AWS_PROFILE:-default}"
 BOOTSTRAP_ARTIFACT_DIR=""
 BACKEND_ARTIFACT_PATH=""
 CONFIGURE_GITHUB_MODE="prompt"
+BOOTSTRAP_ORG_NAME=""
+BOOTSTRAP_GITHUB_REPO=""
 
 while [[ "${#}" -gt 0 ]]; do
   case "$1" in
@@ -58,12 +60,13 @@ read_tfvar_string() {
   read_tfvar_string_from_file "${BOOTSTRAP_TFVARS_PATH}" "$1"
 }
 
-upsert_tfvar_string() {
-  local key="$1"
-  local value="$2"
-  local tmp_path="${BOOTSTRAP_TFVARS_PATH}.tmp"
+upsert_tfvar_string_in_file() {
+  local tfvars_path="$1"
+  local key="$2"
+  local value="$3"
+  local tmp_path="${tfvars_path}.tmp"
 
-  touch "${BOOTSTRAP_TFVARS_PATH}"
+  touch "${tfvars_path}"
 
   awk -v key="${key}" -v value="${value}" '
     BEGIN {
@@ -81,9 +84,15 @@ upsert_tfvar_string() {
         print key " = \"" value "\""
       }
     }
-  ' "${BOOTSTRAP_TFVARS_PATH}" > "${tmp_path}"
+  ' "${tfvars_path}" > "${tmp_path}"
 
-  mv "${tmp_path}" "${BOOTSTRAP_TFVARS_PATH}"
+  mv "${tmp_path}" "${tfvars_path}"
+}
+
+upsert_tfvar_string() {
+  local key="$1"
+  local value="$2"
+  upsert_tfvar_string_in_file "${BOOTSTRAP_TFVARS_PATH}" "${key}" "${value}"
 }
 
 prompt_required_value() {
@@ -119,6 +128,21 @@ resolve_bootstrap_artifact_context() {
 
 run_github_scaffold() {
   "${GITHUB_SCAFFOLD_HELPER}" --backend-config "${BACKEND_ARTIFACT_PATH}"
+}
+
+sync_environment_global_tfvars() {
+  local env_name=""
+  local global_tfvars_path=""
+
+  echo ""
+  echo "Syncing environment global.tfvars from bootstrap.tfvars"
+
+  for env_name in dev staging prod; do
+    global_tfvars_path="${REPO_ROOT}/environments/${env_name}/global.tfvars"
+    upsert_tfvar_string_in_file "${global_tfvars_path}" "org_name" "${BOOTSTRAP_ORG_NAME}"
+    upsert_tfvar_string_in_file "${global_tfvars_path}" "repo_name" "${BOOTSTRAP_GITHUB_REPO}"
+    echo "  ${env_name}: ${global_tfvars_path}"
+  done
 }
 
 verify_or_update_bootstrap_inputs() {
@@ -202,11 +226,15 @@ verify_or_update_bootstrap_inputs() {
       export AWS_REGION="${current_aws_region}"
       ;;
   esac
+
+  BOOTSTRAP_ORG_NAME="${current_org_name}"
+  BOOTSTRAP_GITHUB_REPO="${current_github_repo}"
 }
 
 echo "Bootstrapping account: ${ACCOUNT_ID}"
 verify_or_update_bootstrap_inputs
 resolve_bootstrap_artifact_context
+sync_environment_global_tfvars
 
 echo "[1/5] Initializing with local backend..."
 terraform init

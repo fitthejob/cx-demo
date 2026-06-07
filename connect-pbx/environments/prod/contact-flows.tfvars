@@ -4,7 +4,7 @@
 # Review prompt wording before the first production apply.
 # ---------------------------------------------------------------
 
-enable_audit_integration = true
+enable_audit_integration = false
 
 tts_voice_id      = "Joanna"
 tts_language_code = "en-US"

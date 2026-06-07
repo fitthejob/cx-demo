@@ -1,6 +1,6 @@
 # Production baseline mirrors dev until business-specific routing is finalized.
 
-enable_audit_integration = true
+enable_audit_integration = false
 
 queues = {
 

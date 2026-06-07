@@ -72,16 +72,20 @@
           </div>
           <div class="summary-grid">
             <div class="summary-card">
-              <span id="requestedSummaryLabel">Requested</span>
+              <span id="requestedSummaryLabel">Pack scope</span>
               <strong id="requestedCount">0</strong>
             </div>
             <div class="summary-card">
-              <span id="autoAddedSummaryLabel">Auto-added dependencies</span>
+              <span id="autoAddedSummaryLabel">Ready now</span>
               <strong id="autoAddedCount">0</strong>
             </div>
             <div class="summary-card">
-              <span id="executionSummaryLabel">Execution order</span>
+              <span id="executionSummaryLabel">Blocked</span>
               <strong id="executionCount">0</strong>
+            </div>
+            <div class="summary-card">
+              <span id="waveSummaryLabel">Current wave</span>
+              <strong id="waveCount">-</strong>
             </div>
           </div>
           <div id="resolutionError" class="callout error hidden"></div>
@@ -89,15 +93,15 @@
           <div id="resolutionWarnings" class="callout warning hidden"></div>
           <div class="preview-columns">
             <div>
-              <h3 id="requestedHeading">Requested selections</h3>
+              <h3 id="requestedHeading">Pack scope</h3>
               <ul id="requestedList" class="preview-list"></ul>
             </div>
             <div>
-              <h3 id="autoAddedHeading">Auto-added dependencies</h3>
+              <h3 id="autoAddedHeading">Ready now</h3>
               <ul id="dependencyList" class="preview-list"></ul>
             </div>
             <div>
-              <h3 id="executionHeading">Execution order</h3>
+              <h3 id="executionHeading">Blocked</h3>
               <ol id="executionList" class="preview-list ordered"></ol>
             </div>
           </div>
@@ -120,8 +124,8 @@
           </div>
           <div class="run-log-shell">
             <div class="button-row run-action-row">
-              <button id="planButton" type="button">Run Plan</button>
-              <button id="applyButton" type="button" class="primary">Run Apply</button>
+              <button id="planButton" type="button">Plan Ready Wave</button>
+              <button id="applyButton" type="button" class="primary">Apply Ready Wave</button>
               <button id="destroyButton" type="button" class="danger">Run Destroy</button>
             </div>
             <div id="runApprovalOverlay" class="run-approval-overlay hidden">

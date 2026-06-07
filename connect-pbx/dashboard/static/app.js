@@ -45,9 +45,11 @@ const els = {
   requestedCount: document.getElementById("requestedCount"),
   autoAddedCount: document.getElementById("autoAddedCount"),
   executionCount: document.getElementById("executionCount"),
+  waveCount: document.getElementById("waveCount"),
   requestedSummaryLabel: document.getElementById("requestedSummaryLabel"),
   autoAddedSummaryLabel: document.getElementById("autoAddedSummaryLabel"),
   executionSummaryLabel: document.getElementById("executionSummaryLabel"),
+  waveSummaryLabel: document.getElementById("waveSummaryLabel"),
   requestedHeading: document.getElementById("requestedHeading"),
   autoAddedHeading: document.getElementById("autoAddedHeading"),
   executionHeading: document.getElementById("executionHeading"),
@@ -396,6 +398,8 @@ function renderActionAvailability() {
   } else if (state.actionMode === "destroy" && state.resolutionLoading) {
     message = "Checking server-side destroy safety before enabling the next action...";
     loading = true;
+  } else if (state.actionMode !== "destroy" && state.resolution && !state.resolution.error && (state.resolution.execution_order || []).length === 0) {
+    message = "No ready wave is available yet. Apply the current prerequisites first or refresh state to recalculate the next wave.";
   }
 
   if (!message) {
@@ -796,6 +800,140 @@ function executionDisplayEntries(executionPaths) {
   return collapsePathsForDisplay(executionPaths);
 }
 
+function moduleByPath(path) {
+  return state.modules.find((module) => module.path === path) || null;
+}
+
+function moduleDisplayLabel(path) {
+  const module = moduleByPath(path);
+  const definition = rollupDefinitionForPath(path);
+  if (definition) {
+    return rollupMemberLabel(definition, path, module);
+  }
+  return module?.prd || path;
+}
+
+function initialSatisfiedModulePaths(modulesByPath) {
+  const satisfied = new Set();
+  modulesByPath.forEach((module, path) => {
+    if (module.deployment_status === "deployed") {
+      satisfied.add(path);
+    }
+  });
+  return satisfied;
+}
+
+function runnableScopeForPreview(executionOrder, selectedModules, modulesByPath) {
+  const selectedSet = new Set(selectedModules);
+  return executionOrder.filter((path) => selectedSet.has(path) || modulesByPath.get(path)?.deployment_status !== "deployed");
+}
+
+function unresolvedDependenciesForPreview(path, modulesByPath, satisfiedPaths) {
+  const module = modulesByPath.get(path);
+  return (module?.dependencies || []).filter((dependency) => dependency !== BOOTSTRAP_MODULE_PATH && !satisfiedPaths.has(dependency));
+}
+
+function buildDeploymentWavesPreview(pendingPaths, modulesByPath) {
+  const remaining = [...pendingPaths];
+  const waves = [];
+  const satisfiedPaths = initialSatisfiedModulePaths(modulesByPath);
+
+  while (remaining.length > 0) {
+    const wave = remaining.filter((path) => unresolvedDependenciesForPreview(path, modulesByPath, satisfiedPaths).length === 0);
+    if (wave.length === 0) {
+      break;
+    }
+
+    waves.push(wave);
+    wave.forEach((path) => satisfiedPaths.add(path));
+    wave.forEach((path) => {
+      const index = remaining.indexOf(path);
+      if (index >= 0) {
+        remaining.splice(index, 1);
+      }
+    });
+  }
+
+  return { waves, unresolvedPaths: remaining };
+}
+
+function renderPreviewEntry(label, detail, tags = []) {
+  const tagMarkup = tags
+    .filter((tag) => Boolean(tag))
+    .map((tag) => `<span class="preview-entry-tag">${tag}</span>`)
+    .join("");
+
+  return `
+    <li class="preview-entry">
+      <div class="preview-entry-title">
+        <strong>${label}</strong>
+        ${tagMarkup}
+      </div>
+      ${detail ? `<div class="preview-entry-detail">${detail}</div>` : ""}
+    </li>
+  `;
+}
+
+function renderScopeEntries(paths, resolution) {
+  const readySet = new Set(resolution.ready_wave || []);
+  const deferredMap = new Map((resolution.deferred_modules || []).map((item) => [item.path, item]));
+
+  return paths.map((path) => {
+    const module = moduleByPath(path);
+    const deferred = deferredMap.get(path);
+    const tags = [];
+    let detail = module?.path || path;
+
+    if (readySet.has(path)) {
+      tags.push("Ready now");
+    } else if (deferred) {
+      tags.push("Blocked");
+      if ((deferred.blocked_by || []).length > 0) {
+        detail = `Blocked by ${deferred.blocked_by.map((dependency) => moduleDisplayLabel(dependency)).join(", ")}`;
+      } else {
+        detail = deferred.reason || detail;
+      }
+    } else if (module?.deployment_status === "deployed") {
+      tags.push("Already deployed");
+    }
+
+    return renderPreviewEntry(moduleDisplayLabel(path), detail, tags);
+  });
+}
+
+function renderReadyEntries(paths, resolution) {
+  const selectedSet = new Set(resolution.requested_modules || []);
+  return paths.map((path) => {
+    const module = moduleByPath(path);
+    const tags = [selectedSet.has(path) ? "Selected" : "Dependency"];
+    return renderPreviewEntry(moduleDisplayLabel(path), module?.path || path, tags);
+  });
+}
+
+function renderBlockedEntries(items) {
+  return items.map((item) => {
+    const blockedBy = item.blocked_by || [];
+    const detail = blockedBy.length > 0
+      ? `Blocked by ${blockedBy.map((dependency) => moduleDisplayLabel(dependency)).join(", ")}`
+      : (item.reason || item.path);
+    return renderPreviewEntry(moduleDisplayLabel(item.path), detail, ["Deferred"]);
+  });
+}
+
+function waveCountText(resolution, destroyMode) {
+  if (destroyMode) {
+    const runSliceSize = (resolution?.execution_order || []).length;
+    return runSliceSize > 0 ? String(runSliceSize) : "-";
+  }
+
+  const totalWaves = resolution?.total_waves || 0;
+  const currentWaveIndex = resolution?.current_wave_index ?? -1;
+  if (totalWaves <= 0 || currentWaveIndex < 0) {
+    return "-";
+  }
+  return `${currentWaveIndex + 1}/${totalWaves}`;
+}
+
 function destroyComponentLabel(module) {
   if (module.path === "modules/l0-audit-pipeline") {
     return "PRD-03 audit add-on";
@@ -990,20 +1128,43 @@ function resolutionAction() {
 function resolutionLabels() {
   const destroyMode = state.actionMode === "destroy";
   return {
-    requestedSummary: destroyMode ? "Requested destroy targets" : "Requested",
-    autoAddedSummary: destroyMode ? "Auto-added reverse dependents" : "Auto-added dependencies",
-    executionSummary: destroyMode ? "Destroy order" : "Execution order",
-    requestedHeading: destroyMode ? "Requested destroy targets" : "Requested selections",
-    autoAddedHeading: destroyMode ? "Auto-added reverse dependents" : "Auto-added dependencies",
-    executionHeading: destroyMode ? "Destroy order" : "Execution order",
-    emptyAutoAdded: destroyMode ? "No deployed reverse dependents need teardown." : "No extra dependencies needed.",
-    emptyPreviewAutoAdded: destroyMode ? "No reverse-dependent expansion yet." : "No dependency expansion yet.",
-    emptyExecution: destroyMode ? "No destroy order yet." : "No execution order yet.",
+    requestedSummary: destroyMode ? "Requested destroy targets" : "Pack scope",
+    autoAddedSummary: destroyMode ? "Auto-added reverse dependents" : "Ready now",
+    executionSummary: destroyMode ? "Destroy order" : "Blocked",
+    requestedHeading: destroyMode ? "Requested destroy targets" : "Pack scope",
+    autoAddedHeading: destroyMode ? "Auto-added reverse dependents" : "Ready now",
+    executionHeading: destroyMode ? "Destroy order" : "Blocked",
+    emptyAutoAdded: destroyMode ? "No deployed reverse dependents need teardown." : "No modules are ready in this wave.",
+    emptyPreviewAutoAdded: destroyMode ? "No reverse-dependent expansion yet." : "No ready wave preview yet.",
+    emptyExecution: destroyMode ? "No destroy order yet." : "No blocked modules in this selection.",
     autoAddedTag: destroyMode ? "Included as reverse dependent" : "Included as dependency",
     autoAddedTitle: destroyMode
       ? "Included as reverse dependent. Click to explicitly select this module."
       : "Included as dependency. Click to explicitly select this module.",
   };
+}
+
+function updateRunButtons() {
+  if (state.actionMode === "destroy") {
+    els.planButton.textContent = "Run Plan";
+    els.applyButton.textContent = "Run Apply";
+    els.destroyButton.textContent = "Run Destroy";
+    return;
+  }
+
+  const totalWaves = state.resolution?.total_waves || 0;
+  const currentWaveIndex = state.resolution?.current_wave_index ?? -1;
+  const waveLabel = totalWaves > 0 && currentWaveIndex >= 0
+    ? `Wave ${currentWaveIndex + 1} of ${totalWaves}`
+    : "Ready Wave";
+
+  els.planButton.textContent = totalWaves > 0 && currentWaveIndex >= 0
+    ? `Plan ${waveLabel}`
+    : "Plan Ready Wave";
+  els.applyButton.textContent = totalWaves > 0 && currentWaveIndex >= 0
+    ? `Apply ${waveLabel}`
+    : "Apply Ready Wave";
+  els.destroyButton.textContent = "Run Destroy";
 }
 
 function syncModeControls() {
@@ -1015,9 +1176,11 @@ function syncModeControls() {
   els.requestedSummaryLabel.textContent = labels.requestedSummary;
   els.autoAddedSummaryLabel.textContent = labels.autoAddedSummary;
   els.executionSummaryLabel.textContent = labels.executionSummary;
+  els.waveSummaryLabel.textContent = destroyMode ? "Run slice" : "Current wave";
   els.requestedHeading.textContent = labels.requestedHeading;
   els.autoAddedHeading.textContent = labels.autoAddedHeading;
   els.executionHeading.textContent = labels.executionHeading;
+  updateRunButtons();
 }
 
 async function setActionMode(mode) {
@@ -1073,14 +1236,48 @@ function resolveApplySelectionLocally(selectedModules) {
   selectedModules.forEach((path) => include(path));
 
   const executionOrder = enabledOrder.filter((path) => resolved.has(path));
-  const autoAddedDependencies = executionOrder.filter((path) => !state.selected.has(path));
+  const selectedScope = enabledOrder.filter((path) => state.selected.has(path));
+  const runnableScope = runnableScopeForPreview(executionOrder, selectedModules, modulesByPath);
+  const { waves, unresolvedPaths } = buildDeploymentWavesPreview(runnableScope, modulesByPath);
+  const readyWave = waves[0] || [];
+  const autoAddedDependencies = readyWave.filter((path) => !state.selected.has(path));
   const warnings = [];
+  const deferredModules = [];
 
-  if (executionOrder.includes(AUDIT_PIPELINE_MODULE_PATH)) {
+  const satisfiedBeforeWave = initialSatisfiedModulePaths(modulesByPath);
+  runnableScope.forEach((path) => {
+    if (readyWave.includes(path)) {
+      return;
+    }
+
+    const blockedBy = unresolvedDependenciesForPreview(path, modulesByPath, satisfiedBeforeWave);
+    deferredModules.push({
+      path,
+      blocked_by: blockedBy,
+      reason: blockedBy.length > 0
+        ? "Dependency not yet deployed to remote state."
+        : "Module is waiting for an earlier wave to complete before its dependencies can be satisfied.",
+    });
+  });
+
+  unresolvedPaths.forEach((path) => {
+    const module = modulesByPath.get(path);
+    deferredModules.push({
+      path,
+      blocked_by: (module?.dependencies || []).filter((dependency) => dependency !== BOOTSTRAP_MODULE_PATH),
+      reason: "Unable to place this module into a deployment wave because dependency state could not be resolved.",
+    });
+  });
+
+  if (deferredModules.length > 0) {
+    warnings.push("This selection deploys incrementally in dependency waves. Only the ready wave can run in this pass; deferred modules unlock after earlier waves are applied.");
+  }
+
+  if (readyWave.includes(AUDIT_PIPELINE_MODULE_PATH)) {
     warnings.push("PRD-03 is included. Applying it will manage AWS Config, CloudTrail, Security Hub, and the audit bucket.");
   }
 
-  if (executionOrder.includes("modules/l1-phone-numbers")) {
+  if (readyWave.includes("modules/l1-phone-numbers")) {
     warnings.push("PRD-11 is stateful. Phone numbers are retained infrastructure and should be changed deliberately.");
   }
 
@@ -1088,8 +1285,14 @@ function resolveApplySelectionLocally(selectedModules) {
     action: "apply",
     environment: state.environment,
     requested_modules: selectedModules,
+    selected_scope: selectedScope,
     auto_added_dependencies: autoAddedDependencies,
-    execution_order: executionOrder,
+    execution_order: readyWave,
+    ready_wave: readyWave,
+    deferred_modules: deferredModules,
+    waves,
+    current_wave_index: readyWave.length > 0 ? 0 : -1,
+    total_waves: waves.length,
     warnings,
   };
 }
@@ -1141,10 +1344,19 @@ function normalizeResolutionForCompare(resolution) {
   return {
     action: resolution.action,
     requested_modules: [...(resolution.requested_modules || [])],
+    selected_scope: [...(resolution.selected_scope || [])],
     auto_added_dependencies: [...(resolution.auto_added_dependencies || [])],
     execution_order: [...(resolution.execution_order || [])],
+    ready_wave: [...(resolution.ready_wave || [])],
     warnings: [...(resolution.warnings || [])],
-    deferred_modules: [...(resolution.deferred_modules || [])],
+    deferred_modules: (resolution.deferred_modules || []).map((item) => ({
+      path: item.path,
+      blocked_by: [...(item.blocked_by || [])],
+      reason: item.reason || "",
+    })),
+    waves: (resolution.waves || []).map((wave) => [...wave]),
+    current_wave_index: resolution.current_wave_index,
+    total_waves: resolution.total_waves,
   };
 }
 
@@ -1826,17 +2038,18 @@ function renderResolutionLegacy() {
 }
 
 function renderResolution() {
+  const destroyMode = state.actionMode === "destroy";
   const requestedModules = [...state.selected];
-  const requestedDisplay = collapsePathsForDisplay(requestedModules);
   const labels = resolutionLabels();
   syncModeControls();
-  els.requestedCount.textContent = String(requestedDisplay.length);
+  els.requestedCount.textContent = String(requestedModules.length);
 
   if (!state.resolution || state.resolution.error) {
     els.autoAddedCount.textContent = "0";
     els.executionCount.textContent = "0";
-    els.requestedList.innerHTML = requestedDisplay.length
-      ? requestedDisplay.map((module) => `<li>${module}</li>`).join("")
+    els.waveCount.textContent = "-";
+    els.requestedList.innerHTML = requestedModules.length
+      ? requestedModules.map((path) => renderPreviewEntry(moduleDisplayLabel(path), moduleByPath(path)?.path || path)).join("")
       : "<li>No modules selected.</li>";
     els.dependencyList.innerHTML = `<li>${labels.emptyPreviewAutoAdded}</li>`;
     els.executionList.innerHTML = `<li>${labels.emptyExecution}</li>`;
@@ -1860,16 +2073,31 @@ function renderResolution() {
     return;
   }
 
-  const autoAdded = state.resolution.auto_added_dependencies || [];
-  const execution = state.resolution.execution_order || [];
-  const autoAddedDisplay = collapsePathsForDisplay(autoAdded);
-  const executionDisplay = executionDisplayEntries(execution);
+  if (destroyMode) {
+    const requestedDisplay = collapsePathsForDisplay(requestedModules);
+    const autoAdded = state.resolution.auto_added_dependencies || [];
+    const execution = state.resolution.execution_order || [];
+    const autoAddedDisplay = collapsePathsForDisplay(autoAdded);
+    const executionDisplay = executionDisplayEntries(execution);
 
-  els.autoAddedCount.textContent = String(autoAddedDisplay.length);
-  els.executionCount.textContent = String(executionDisplay.length);
-  els.requestedList.innerHTML = requestedDisplay.map((module) => `<li>${module}</li>`).join("") || "<li>No modules selected.</li>";
-  els.dependencyList.innerHTML = autoAddedDisplay.map((module) => `<li>${module}</li>`).join("") || `<li>${labels.emptyAutoAdded}</li>`;
-  els.executionList.innerHTML = executionDisplay.map((module) => `<li>${module}</li>`).join("") || `<li>${labels.emptyExecution}</li>`;
+    els.autoAddedCount.textContent = String(autoAddedDisplay.length);
+    els.executionCount.textContent = String(executionDisplay.length);
+    els.waveCount.textContent = waveCountText(state.resolution, true);
+    els.requestedList.innerHTML = requestedDisplay.map((module) => `<li>${module}</li>`).join("") || "<li>No modules selected.</li>";
+    els.dependencyList.innerHTML = autoAddedDisplay.map((module) => `<li>${module}</li>`).join("") || `<li>${labels.emptyAutoAdded}</li>`;
+    els.executionList.innerHTML = executionDisplay.map((module) => `<li>${module}</li>`).join("") || `<li>${labels.emptyExecution}</li>`;
+  } else {
+    const selectedScope = state.resolution.selected_scope || requestedModules;
+    const readyWave = state.resolution.ready_wave || [];
+    const deferredModules = state.resolution.deferred_modules || [];
+
+    els.autoAddedCount.textContent = String(readyWave.length);
+    els.executionCount.textContent = String(deferredModules.length);
+    els.waveCount.textContent = waveCountText(state.resolution, false);
+    els.requestedList.innerHTML = renderScopeEntries(selectedScope, state.resolution).join("") || "<li>No modules selected.</li>";
+    els.dependencyList.innerHTML = renderReadyEntries(readyWave, state.resolution).join("") || `<li>${labels.emptyAutoAdded}</li>`;
+    els.executionList.innerHTML = renderBlockedEntries(deferredModules).join("") || `<li>${labels.emptyExecution}</li>`;
+  }
 
   els.resolutionError.classList.add("hidden");
   if (state.resolutionInfo) {
@@ -1889,16 +2117,19 @@ function renderResolution() {
     els.resolutionWarnings.classList.add("hidden");
   }
 
+  updateRunButtons();
   syncActionButtons(true);
   syncRunApprovalState();
 }
 
 function syncActionButtons(enabled) {
   const destroyMode = state.actionMode === "destroy";
+  const noReadyWave = !destroyMode && Boolean(state.resolution && !state.resolution.error) && (state.resolution.execution_order || []).length === 0;
   const blocked = !enabled || state.loadingState || state.runStartupPending || state.runRequestPending || Boolean(state.activeTaskId) || Boolean(state.pendingRunApproval) || (destroyMode && state.resolutionLoading);
-  els.planButton.disabled = blocked || destroyMode;
-  els.applyButton.disabled = blocked || destroyMode;
+  els.planButton.disabled = blocked || destroyMode || noReadyWave;
+  els.applyButton.disabled = blocked || destroyMode || noReadyWave;
   els.destroyButton.disabled = blocked || !destroyMode;
+  updateRunButtons();
   renderActionAvailability();
 }
 
@@ -1978,12 +2209,31 @@ async function startRun(action, options = {}) {
   }
 }
 
+function matchingResolutionForTask(task) {
+  if (!state.resolution || state.resolution.error) {
+    return null;
+  }
+
+  const taskRequested = [...(task.requested_modules || [])].slice().sort();
+  const resolutionRequested = [...(state.resolution.requested_modules || [])].slice().sort();
+  if (!selectionsMatch(taskRequested, resolutionRequested)) {
+    return null;
+  }
+
+  return state.resolution;
+}
+
 function renderTask(task) {
   rememberTask(task);
+  const resolution = matchingResolutionForTask(task);
+  const waveSummary = resolution && state.actionMode !== "destroy"
+    ? `<br>Wave: <strong>${waveCountText(resolution, false)}</strong> • Ready now: <strong>${(resolution.ready_wave || []).length}</strong> • Deferred: <strong>${(resolution.deferred_modules || []).length}</strong>`
+    : "";
   setRunMetaContent(`
     <strong>${task.action.toUpperCase()}</strong> in <strong>${task.environment}</strong>
     <br>
     Status: <strong>${task.status}</strong>
+    ${waveSummary}
     ${task.active_module ? `<br>Active module: <code>${task.active_module}</code>` : ""}
     ${state.runRestoredFromReload ? '<br><span class="run-meta-note">Recovered after reload</span>' : ""}
   `);

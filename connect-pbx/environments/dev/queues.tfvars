@@ -39,7 +39,7 @@
 #   queue_configs              Ordered queue assignments: [{queue_key, channel, priority, delay_seconds}]
 # ---------------------------------------------------------------
 
-enable_audit_integration = true
+enable_audit_integration = false
 
 queues = {
 

@@ -9,7 +9,7 @@ resource "aws_connect_instance" "main" {
   contact_lens_enabled             = true
   multi_party_conference_enabled   = false # Enable in PRD-54 when transfer service is configured
 
-  instance_alias = "${var.org_name}-${terraform.workspace}"
+  instance_alias = "${var.org_name}-${var.repo_name}-${terraform.workspace}"
 
   timeouts {
     create = "5m"

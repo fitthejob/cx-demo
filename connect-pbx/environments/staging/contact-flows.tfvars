@@ -1,6 +1,6 @@
 # Staging baseline mirrors dev until staging-specific call flow wording is finalized.
 
-enable_audit_integration = true
+enable_audit_integration = false
 
 tts_voice_id      = "Joanna"
 tts_language_code = "en-US"

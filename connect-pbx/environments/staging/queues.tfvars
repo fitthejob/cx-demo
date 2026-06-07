@@ -1,6 +1,6 @@
 # Staging baseline mirrors dev until staging-specific routing is finalized.
 
-enable_audit_integration = true
+enable_audit_integration = false
 
 queues = {
   general = {

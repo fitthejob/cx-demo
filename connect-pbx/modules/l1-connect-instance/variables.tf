@@ -3,6 +3,11 @@ variable "org_name" {
   description = "Organization identifier used in all resource names."
 }
 
+variable "repo_name" {
+  type        = string
+  description = "Repository identifier used in repo-scoped resource names."
+}
+
 variable "aws_region" {
   type        = string
   description = "AWS region for all resources."

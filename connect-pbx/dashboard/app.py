@@ -542,6 +542,70 @@ def load_environment_state(environment: str, include_deployment_status: bool = T
     }
 
 
+def selected_scope_paths(selected_modules: list[str], enabled_order: list[str]) -> list[str]:
+    selected_set = set(selected_modules)
+    return [path for path in enabled_order if path in selected_set]
+
+
+def initial_satisfied_paths(modules_by_path: dict[str, dict[str, Any]]) -> set[str]:
+    return {
+        path
+        for path, module in modules_by_path.items()
+        if module.get("deployment_status") == "deployed"
+    }
+
+
+def runnable_scope_paths(
+    execution_order: list[str],
+    selected_modules: list[str],
+    modules_by_path: dict[str, dict[str, Any]],
+) -> list[str]:
+    selected_set = set(selected_modules)
+    runnable: list[str] = []
+    for path in execution_order:
+        if path in selected_set or modules_by_path[path].get("deployment_status") != "deployed":
+            runnable.append(path)
+    return runnable
+
+
+def unresolved_dependencies_for_path(
+    path: str,
+    modules_by_path: dict[str, dict[str, Any]],
+    satisfied_paths: set[str],
+) -> list[str]:
+    blockers: list[str] = []
+    for dependency in modules_by_path[path].get("dependencies", []):
+        if dependency == BOOTSTRAP_MODULE_PATH:
+            continue
+        if dependency not in satisfied_paths:
+            blockers.append(dependency)
+    return blockers
+
+
+def build_deployment_waves(
+    pending_paths: list[str],
+    modules_by_path: dict[str, dict[str, Any]],
+) -> tuple[list[list[str]], list[str]]:
+    remaining = list(pending_paths)
+    waves: list[list[str]] = []
+    satisfied_paths = initial_satisfied_paths(modules_by_path)
+
+    while remaining:
+        wave = [
+            path
+            for path in remaining
+            if not unresolved_dependencies_for_path(path, modules_by_path, satisfied_paths)
+        ]
+        if not wave:
+            break
+
+        waves.append(wave)
+        satisfied_paths.update(wave)
+        remaining = [path for path in remaining if path not in wave]
+
+    return waves, remaining
+
+
 def resolve_apply_selection(
     action: str,
     environment: str,
@@ -578,53 +642,51 @@ def resolve_apply_selection(
         include(path)
 
     execution_order = [path for path in enabled_order if path in resolved]
-    auto_added_dependencies = [path for path in execution_order if path not in selected_modules]
+    selected_scope = selected_scope_paths(selected_modules, enabled_order)
+    runnable_scope = runnable_scope_paths(execution_order, selected_modules, modules_by_path)
+    waves, unresolved_paths = build_deployment_waves(runnable_scope, modules_by_path)
+    ready_wave = waves[0] if waves else []
+    auto_added_dependencies = [path for path in ready_wave if path not in selected_modules]
     warnings = []
-    deferred_modules: list[str] = []
+    deferred_modules: list[dict[str, Any]] = []
 
-    if action == "plan":
-        plannable_execution_order: list[str] = []
-        for path in execution_order:
-            module = modules_by_path[path]
-            blocking_dependency: str | None = None
-            blocking_detail = ""
-            for dependency in module.get("dependencies", []):
-                if dependency == BOOTSTRAP_MODULE_PATH:
-                    continue
-                dependency_module = modules_by_path[dependency]
-                dependency_status = dependency_module.get("deployment_status", "unknown")
-                dependency_detail = dependency_module.get("deployment_detail", "State lookup failed.")
-                if dependency_status != "deployed":
-                    blocking_dependency = dependency
-                    blocking_detail = dependency_detail
-                    break
+    satisfied_before_wave = initial_satisfied_paths(modules_by_path)
+    for path in runnable_scope:
+        if path in ready_wave:
+            continue
 
-            if blocking_dependency:
-                deferred_modules.append(path)
-                warnings.append(
-                    f"{path} is deferred from this plan pass because it depends on {blocking_dependency}, which is not currently deployed. "
-                    f"Current dependency status: {blocking_detail}. Terraform plan does not write dependency outputs to remote state, so downstream modules that read upstream state cannot be planned until that dependency is actually applied."
-                )
-                continue
+        blocked_by = unresolved_dependencies_for_path(path, modules_by_path, satisfied_before_wave)
+        reason = "Dependency not yet deployed to remote state."
+        if not blocked_by:
+            reason = "Module is waiting for an earlier wave to complete before its dependencies can be satisfied."
 
-            plannable_execution_order.append(path)
+        deferred_modules.append(
+            {
+                "path": path,
+                "blocked_by": blocked_by,
+                "reason": reason,
+            }
+        )
 
-        # For plan runs, already-deployed auto-added dependencies act as
-        # satisfied preconditions and do not need to be queued again.
-        filtered_plan_execution_order: list[str] = []
-        for path in plannable_execution_order:
-            if path in selected_modules:
-                filtered_plan_execution_order.append(path)
-                continue
+    for path in unresolved_paths:
+        module = modules_by_path[path]
+        deferred_modules.append(
+            {
+                "path": path,
+                "blocked_by": [dep for dep in module.get("dependencies", []) if dep != BOOTSTRAP_MODULE_PATH],
+                "reason": "Unable to place this module into a deployment wave because dependency state could not be resolved.",
+            }
+        )
 
-            module_status = modules_by_path[path].get("deployment_status", "unknown")
-            if module_status == "deployed":
-                continue
+    if deferred_modules:
+        warnings.append(
+            "This selection deploys incrementally in dependency waves. Only the ready wave can run in this pass; deferred modules unlock after earlier waves are applied."
+        )
+        warnings.append(
+            f"{len(deferred_modules)} module(s) are deferred in this pass. See the Blocked column for exact dependency gates."
+        )
 
-            filtered_plan_execution_order.append(path)
-
-        execution_order = filtered_plan_execution_order
-        auto_added_dependencies = [path for path in execution_order if path not in selected_modules]
+    execution_order = ready_wave
 
     if any(path == "modules/l0-audit-pipeline" for path in execution_order):
         warnings.append("PRD-03 is included. Applying it will manage AWS Config, CloudTrail, Security Hub, and the audit bucket.")
@@ -636,10 +698,15 @@ def resolve_apply_selection(
         "environment": environment,
         "action": action,
         "requested_modules": selected_modules,
+        "selected_scope": selected_scope,
         "auto_added_dependencies": auto_added_dependencies,
         "execution_order": execution_order,
         "warnings": warnings,
+        "ready_wave": ready_wave,
         "deferred_modules": deferred_modules,
+        "waves": waves,
+        "current_wave_index": 0 if ready_wave else -1,
+        "total_waves": len(waves),
     }
 
 
@@ -738,7 +805,7 @@ def resolve_module_selection(environment: str, selected_modules: list[str], acti
     if action not in {"plan", "apply", "destroy"}:
         raise ValueError(f"Unsupported action: {action}")
 
-    state = load_environment_state(environment, include_deployment_status=(action == "plan"))
+    state = load_environment_state(environment, include_deployment_status=(action in {"plan", "apply"}))
     enabled_order = state["enabled_module_paths"]
     enabled_set = set(enabled_order)
     modules_by_path = {module["path"]: module for module in state["modules"]}
