@@ -153,6 +153,38 @@ resource "aws_iam_role_policy" "terraform_execution_s3" {
           "s3:GetBucketVersioning",
         ]
         Resource = "arn:aws:s3:::${var.org_name}-tfstate-*"
+      },
+      {
+        Sid    = "ConnectRecordingsPlaceholderRead"
+        Effect = "Allow"
+        Action = [
+          "s3:GetBucketVersioning",
+          "s3:GetBucketLifecycleConfiguration",
+          "s3:GetEncryptionConfiguration",
+          "s3:GetBucketPublicAccessBlock",
+          "s3:GetBucketPolicy",
+          "s3:GetBucketLogging",
+        ]
+        Resource = "arn:aws:s3:::${var.org_name}-connect-recordings-placeholder-${data.aws_caller_identity.current.account_id}"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "terraform_execution_connect_read" {
+  name = "${var.org_name}-terraform-execution-connect-read"
+  role = aws_iam_role.terraform_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ConnectInstanceRead"
+        Effect = "Allow"
+        Action = [
+          "connect:DescribeInstance",
+        ]
+        Resource = "arn:aws:connect:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*"
       }
     ]
   })
