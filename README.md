@@ -10,12 +10,12 @@ The goal is not just to provision AWS resources, but to give operators a repeata
 
 The repo models a modular Connect platform with:
 
-- account bootstrap and backend design
-- environment-aware deployment control
-- capability-pack driven module selection
-- dependency-aware rollout sequencing
+- Account bootstrap and backend design
+- Environment-aware deployment control
+- Capability-pack driven module selection
+- Dependency-aware rollout sequencing
 - GitHub OIDC based CI/CD
-- drift detection and operator-facing runbooks
+- Drift detection and operator-facing runbooks
 
 The focus is on how to make a Connect implementation operable, governable, and extensible across environments, especially when real-world constraints such as quota blockers, staged cutovers, optional telephony layers, and safe rollback paths are in play.
 
@@ -74,11 +74,33 @@ High-level platform flow:
 This repo is strongest as evidence of:
 
 - Amazon Connect solution design across instance, routing, queue, hours, number, and contact-flow domains
-- Terraform modularization with explicit dependency management and environment manifests
 - CI/CD and identity design using GitHub OIDC instead of long-lived AWS credentials
-- operational design for safe rollout sequencing, re-apply behavior, destroy gating, and drift review
-- balancing platform standardization with optional layers such as audit operations, migration support, and number-governance modules
-- working through real platform constraints such as Connect quota blockers, backend locking changes, IAM hardening, and operator UX clarity
+- Observability design using CloudWatch log groups, metric filters, metric alarms, EventBridge schedules, SNS alerting, and audit evidence capture through the shared audit pipeline
+- Terraform modularization with explicit dependency management and environment manifests
+- Lambda-backed operational automation for contact-flow association, closure checks, holiday evaluation, routing drift, and audit/alarm handling
+- Operational design for safe rollout sequencing, re-apply behavior, destroy gating, and drift review
+- Balancing platform standardization with optional layers such as audit operations, migration support, and number-governance modules
+- Working through real platform constraints such as Connect quota blockers, backend locking changes, IAM hardening, and operator UX clarity
+
+## Design decisions
+
+Some of the most important design choices in this repo are:
+
+- Manifest-driven module selection instead of ad hoc Terraform targeting, so environment intent is explicit and reviewable
+- Capability packs and dependency metadata instead of a flat module list, so optional layers do not become accidental prerequisites
+- GitHub OIDC instead of long-lived AWS credentials, so CI/CD access is short-lived and tied to repo and environment trust
+- A local dashboard that wraps the existing Terraform runner instead of introducing a second deployment engine, so operator UX improves without splitting the source of truth
+- Shared audit and drift patterns that feed CloudWatch, SNS, S3 evidence, and scheduled checks, so observability is treated as part of the platform design rather than an afterthought
+
+## Challenges addressed
+
+This repo also reflects several real implementation and operations challenges:
+
+- Amazon Connect phone-number quota constraints that forced safer optionality and sequencing decisions
+- The need to keep downstream telephony modules modular when core number provisioning is temporarily constrained
+- Migration from deprecated DynamoDB state locking to native S3 lockfiles without breaking active operator workflows
+- Hardening the GitHub execution role so drift detection can read managed resources across Connect, Lambda, CloudWatch, DynamoDB, EventBridge, SSM, and S3
+- Making the deployment dashboard intuitive for both first-time deploys and re-apply/update workflows without overloading the UI
 
 ## Current state
 
@@ -86,25 +108,64 @@ This is currently a `dev`-first implementation and active working platform bluep
 
 A few important realities:
 
-- the repo is being exercised primarily against `dev` right now rather than a polished multi-environment production rollout
-- some modules are intentionally optional or migration-specific
-- drift detection and GitHub execution-role IAM coverage are being actively hardened
-- phone-number provisioning has been shaped by real Amazon Connect quota limitations, which influenced how optionality and deployment sequencing are handled
+- The repo is being exercised primarily against `dev` right now rather than a polished multi-environment production rollout
+- Some modules are intentionally optional or migration-specific
+- Drift detection and GitHub execution-role IAM coverage are being actively hardened
+- Phone-number provisioning has been shaped by real Amazon Connect quota limitations, which influenced how optionality and deployment sequencing are handled
 
-That is intentional context for reviewers: this repo is meant to show architecture thinking, modular platform design, and operational reasoning in a realistic implementation, not a static marketing artifact.
+## Planned future buildout
+
+The tracked repo focuses on the modular platform foundation and current implementation layers, but the broader design roadmap is more extensive than what is checked in here today.
+
+Future buildout is documented in a larger PRD set covering areas such as:
+
+- Scale and resilience patterns
+- Multi-account topology
+- Optional SSO and CRM integration layers
+- Richer storage and data architecture
+- Lambda deployment baseline and versioning strategy
+- Agent management and CCP configuration
+- Voicemail, transcription, and notification services
+- Lex V2 and conversational routing layers
+- Deeper observability, alerting, and FinOps coverage
+- Migration and consolidation workflows
+
+To keep the main repo surface readable and focused on the active implementation, those broader planning PRDs are maintained outside the tracked project contents.
+
+Additional architecture and planning materials are available upon request for solution review conversations when deeper roadmap context would be helpful.
+
+## Representative scenarios
+
+Examples of the kinds of workflows this repo is built to support:
+
+- Bootstrap a new AWS account with a remote Terraform backend, KMS, and GitHub OIDC trust
+- Deploy core telephony capabilities into `dev` with dependency-aware rollout sequencing
+- Re-apply updated Connect routing, queue, or contact-flow logic from the local dashboard without changing the deployment engine
+- Run drift detection and route findings into the shared audit pipeline for review and alerting
+- Add optional governance layers such as routing drift, spam reputation, CNAM, or E911 without collapsing them into mandatory base infrastructure
 
 ## How to review this repo
 
-If you are reviewing this as a portfolio piece, start here:
+To review this repo, start here:
 
 1. `connect-pbx/modules/dependency-order.json` for the capability-pack and dependency model
 2. `connect-pbx/dashboard/` for the operator-facing deployment workflow and wave-based preview
 3. `connect-pbx/modules/bootstrap/` for backend, OIDC, and execution-role design
-4. representative domain modules such as:
+4. Representative domain modules such as:
    - `connect-pbx/modules/l1-connect-instance/`
    - `connect-pbx/modules/l1-phone-numbers/`
    - `connect-pbx/modules/l1-contact-flow-framework/`
 5. `connect-pbx/docs/runbooks/` for the operational model and implementation guidance
+
+## What is intentionally not here
+
+This repo is intentionally not presented as:
+
+- A finished SaaS product or polished commercial offering
+- A complete implementation of every PRD in the broader planning set
+- A devops-only exercise with no architecture intent behind it
+
+Instead, it is meant to be a reviewable implementation blueprint that shows how I think about Amazon Connect platform architecture, AWS integration, operational safety, and phased capability buildout.
 
 ## Prerequisites
 
