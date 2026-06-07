@@ -159,7 +159,7 @@ resource "aws_iam_role_policy" "terraform_execution_s3" {
         Effect = "Allow"
         Action = [
           "s3:GetBucketVersioning",
-          "s3:GetBucketLifecycleConfiguration",
+          "s3:GetLifecycleConfiguration",
           "s3:GetEncryptionConfiguration",
           "s3:GetBucketPublicAccessBlock",
           "s3:GetBucketPolicy",
@@ -183,8 +183,92 @@ resource "aws_iam_role_policy" "terraform_execution_connect_read" {
         Effect = "Allow"
         Action = [
           "connect:DescribeInstance",
+          "connect:DescribeInstanceAttribute",
         ]
         Resource = "arn:aws:connect:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*"
+      },
+      {
+        Sid    = "ConnectHoursRead"
+        Effect = "Allow"
+        Action = [
+          "connect:DescribeHoursOfOperation",
+        ]
+        Resource = "arn:aws:connect:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*/operating-hours/*"
+      },
+      {
+        Sid    = "ConnectQueueRead"
+        Effect = "Allow"
+        Action = [
+          "connect:DescribeQueue",
+        ]
+        Resource = "arn:aws:connect:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*/queue/*"
+      },
+      {
+        Sid    = "ConnectContactFlowRead"
+        Effect = "Allow"
+        Action = [
+          "connect:DescribeContactFlow",
+        ]
+        Resource = "arn:aws:connect:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*/contact-flow/*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
+  name = "${var.org_name}-terraform-execution-runtime-read"
+  role = aws_iam_role.terraform_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "CloudWatchAlarmRead"
+        Effect = "Allow"
+        Action = [
+          "cloudwatch:DescribeAlarms",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "LogsMetricFilterRead"
+        Effect = "Allow"
+        Action = [
+          "logs:DescribeMetricFilters",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "DynamoDBProjectTableRead"
+        Effect = "Allow"
+        Action = [
+          "dynamodb:DescribeTable",
+        ]
+        Resource = "arn:aws:dynamodb:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/${var.org_name}-*"
+      },
+      {
+        Sid    = "EventBridgeProjectRuleRead"
+        Effect = "Allow"
+        Action = [
+          "events:DescribeRule",
+        ]
+        Resource = "arn:aws:events:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:rule/${var.org_name}-*"
+      },
+      {
+        Sid    = "LambdaProjectFunctionRead"
+        Effect = "Allow"
+        Action = [
+          "lambda:GetFunction",
+        ]
+        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:${var.org_name}-*"
+      },
+      {
+        Sid    = "SSMProjectParameterRead"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+        ]
+        Resource = "arn:aws:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:parameter/${var.org_name}/*"
       }
     ]
   })
