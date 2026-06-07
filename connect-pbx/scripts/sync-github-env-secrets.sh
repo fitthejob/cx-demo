@@ -64,6 +64,25 @@ set_secret() {
   fi
 }
 
+secret_api_path() {
+  local name="$1"
+
+  if [[ -n "${REPO_SLUG}" ]]; then
+    printf 'repos/%s/environments/%s/secrets/%s\n' "${REPO_SLUG}" "${ENVIRONMENT}" "${name}"
+  else
+    echo "Unable to verify environment secret metadata without a repository slug." >&2
+    exit 1
+  fi
+}
+
+secret_updated_at() {
+  local name="$1"
+  local api_path
+  api_path="$(secret_api_path "${name}")"
+
+  gh api "${api_path}" --jq '.updated_at' 2>/dev/null || true
+}
+
 while [[ "${#}" -gt 0 ]]; do
   case "$1" in
     --env|--environment)
@@ -146,12 +165,27 @@ terraform -chdir="${ACCOUNT_BASELINE_MODULE}" init \
 
 terraform -chdir="${ACCOUNT_BASELINE_MODULE}" workspace select "${ENVIRONMENT}" >/dev/null
 ENV_KMS_KEY_ARN="$(terraform -chdir="${ACCOUNT_BASELINE_MODULE}" output -raw kms_key_arn)"
+ENV_KMS_SECRET_UPDATED_AT_BEFORE="$(secret_updated_at "ENV_KMS_KEY_ARN")"
 
 set_secret "AWS_ACCOUNT_ID" "${ACCOUNT_ID}"
 set_secret "AWS_REGION" "${REGION}"
 set_secret "STATE_BUCKET" "${STATE_BUCKET}"
 set_secret "TF_EXEC_ROLE_ARN" "${TF_EXEC_ROLE_ARN}"
 set_secret "ENV_KMS_KEY_ARN" "${ENV_KMS_KEY_ARN}"
+
+ENV_KMS_SECRET_UPDATED_AT_AFTER="$(secret_updated_at "ENV_KMS_KEY_ARN")"
+if [[ -z "${ENV_KMS_SECRET_UPDATED_AT_AFTER}" ]]; then
+  echo "ERROR: ENV_KMS_KEY_ARN was written locally, but GitHub secret metadata could not be read back." >&2
+  echo "Expected kms_key_arn: ${ENV_KMS_KEY_ARN}" >&2
+  exit 1
+fi
+
+if [[ -n "${ENV_KMS_SECRET_UPDATED_AT_BEFORE}" && "${ENV_KMS_SECRET_UPDATED_AT_BEFORE}" == "${ENV_KMS_SECRET_UPDATED_AT_AFTER}" ]]; then
+  echo "ERROR: ENV_KMS_KEY_ARN still shows the same GitHub updated_at timestamp after sync." >&2
+  echo "GitHub does not expose secret plaintext for read-back, so value comparison is not possible." >&2
+  echo "Expected kms_key_arn: ${ENV_KMS_KEY_ARN}" >&2
+  exit 1
+fi
 
 echo
 echo "Updated GitHub Actions environment secrets:"
@@ -162,3 +196,4 @@ echo "  - TF_EXEC_ROLE_ARN"
 echo "  - ENV_KMS_KEY_ARN"
 echo
 echo "Workspace selected during lookup: ${ENVIRONMENT}"
+echo "Verified GitHub secret metadata refresh for ENV_KMS_KEY_ARN at: ${ENV_KMS_SECRET_UPDATED_AT_AFTER}"

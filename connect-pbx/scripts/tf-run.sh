@@ -121,7 +121,7 @@ run_post_apply_secret_sync() {
       env)
         echo "Syncing environment GitHub Actions secrets..."
         if ! "${REPO_ROOT}/scripts/sync-github-env-secrets.sh" --env "${environment}" --backend-config "${backend_config_path}"; then
-          echo "Warning: environment GitHub secret sync failed. Infrastructure apply succeeded; rerun sync manually." >&2
+          echo "WARNING: environment GitHub secret sync or verification failed. Infrastructure apply succeeded, but ENV_KMS_KEY_ARN may not be reflected correctly in GitHub; rerun sync manually and confirm dashboard secret status." >&2
         fi
         ;;
       audit)
