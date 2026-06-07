@@ -180,21 +180,40 @@ jobs:
           fi
 
           EXIT_CODE=0
-          terraform plan "${PLAN_ARGS[@]}" -input=false -detailed-exitcode -no-color 2>&1 || EXIT_CODE=$?
+          terraform plan "${PLAN_ARGS[@]}" -input=false -detailed-exitcode -no-color 2>&1 | tee drift-plan-output.txt || EXIT_CODE=$?
           echo "exit_code=${EXIT_CODE}" >> $GITHUB_OUTPUT
 
       - name: Write Drift Result to S3
         if: always()
+        working-directory: connect-pbx/${{ matrix.module }}
+        shell: bash
         run: |
+          set -euo pipefail
           DATE=$(date -u +%Y/%m/%d)
           TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          DRIFTED=$([[ "${{ steps.drift.outputs.exit_code }}" == "2" ]] && echo "true" || echo "false")
+          EXIT_CODE="${{ steps.drift.outputs.exit_code }}"
+          STATUS="clean"
+          DRIFTED="false"
+          if [[ "${EXIT_CODE}" == "2" ]]; then
+            STATUS="drift"
+            DRIFTED="true"
+          elif [[ "${EXIT_CODE}" == "1" ]]; then
+            STATUS="error"
+          fi
+
+          ERROR_SUMMARY="null"
+          if [[ "${EXIT_CODE}" == "1" && -f drift-plan-output.txt ]]; then
+            ERROR_SUMMARY="$(python -c "import json, pathlib; text = pathlib.Path('drift-plan-output.txt').read_text(encoding='utf-8', errors='replace'); text = text[-12000:]; print(json.dumps(text))")"
+          fi
+
           MODULE_SLUG=$(echo "${{ matrix.module }}" | tr '/' '-')
-          printf '{"timestamp":"%s","module":"%s","environment":"dev","drifted":%s,"exit_code":"%s"}\n' \
+          printf '{"timestamp":"%s","module":"%s","environment":"dev","status":"%s","drifted":%s,"exit_code":"%s","error_summary":%s}\n' \
             "${TIMESTAMP}" \
             "${{ matrix.module }}" \
+            "${STATUS}" \
             "${DRIFTED}" \
             "${{ steps.drift.outputs.exit_code }}" \
+            "${ERROR_SUMMARY}" \
             > drift-result.json
           aws s3 cp drift-result.json \
             "s3://${{ secrets.STATE_BUCKET }}/audit/drift/${DATE}/${MODULE_SLUG}-${{ github.run_id }}.json" \
