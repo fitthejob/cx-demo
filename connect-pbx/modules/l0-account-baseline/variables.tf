@@ -3,6 +3,11 @@ variable "org_name" {
   description = "Organization identifier used in all resource names."
 }
 
+variable "repo_name" {
+  type        = string
+  description = "Repository identifier accepted from shared global tfvars. Not consumed by this module."
+}
+
 variable "aws_region" {
   type        = string
   description = "AWS region for all state backend resources."

@@ -885,7 +885,7 @@ function renderScopeEntries(paths, resolution) {
     let detail = module?.path || path;
 
     if (readySet.has(path)) {
-      tags.push("Ready now");
+      tags.push("Will run now");
     } else if (deferred) {
       tags.push("Blocked");
       if ((deferred.blocked_by || []).length > 0) {
@@ -1129,13 +1129,13 @@ function resolutionLabels() {
   const destroyMode = state.actionMode === "destroy";
   return {
     requestedSummary: destroyMode ? "Requested destroy targets" : "Pack scope",
-    autoAddedSummary: destroyMode ? "Auto-added reverse dependents" : "Ready now",
+    autoAddedSummary: destroyMode ? "Auto-added reverse dependents" : "Will run now",
     executionSummary: destroyMode ? "Destroy order" : "Blocked",
     requestedHeading: destroyMode ? "Requested destroy targets" : "Pack scope",
-    autoAddedHeading: destroyMode ? "Auto-added reverse dependents" : "Ready now",
+    autoAddedHeading: destroyMode ? "Auto-added reverse dependents" : "Will run now",
     executionHeading: destroyMode ? "Destroy order" : "Blocked",
-    emptyAutoAdded: destroyMode ? "No deployed reverse dependents need teardown." : "No modules are ready in this wave.",
-    emptyPreviewAutoAdded: destroyMode ? "No reverse-dependent expansion yet." : "No ready wave preview yet.",
+    emptyAutoAdded: destroyMode ? "No deployed reverse dependents need teardown." : "No modules will run in this wave.",
+    emptyPreviewAutoAdded: destroyMode ? "No reverse-dependent expansion yet." : "No current run-wave preview yet.",
     emptyExecution: destroyMode ? "No destroy order yet." : "No blocked modules in this selection.",
     autoAddedTag: destroyMode ? "Included as reverse dependent" : "Included as dependency",
     autoAddedTitle: destroyMode
@@ -2227,7 +2227,7 @@ function renderTask(task) {
   rememberTask(task);
   const resolution = matchingResolutionForTask(task);
   const waveSummary = resolution && state.actionMode !== "destroy"
-    ? `<br>Wave: <strong>${waveCountText(resolution, false)}</strong> • Ready now: <strong>${(resolution.ready_wave || []).length}</strong> • Deferred: <strong>${(resolution.deferred_modules || []).length}</strong>`
+    ? `<br>Wave: <strong>${waveCountText(resolution, false)}</strong> • Will run now: <strong>${(resolution.ready_wave || []).length}</strong> • Deferred: <strong>${(resolution.deferred_modules || []).length}</strong>`
     : "";
   setRunMetaContent(`
     <strong>${task.action.toUpperCase()}</strong> in <strong>${task.environment}</strong>

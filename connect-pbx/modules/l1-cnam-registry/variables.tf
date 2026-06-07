@@ -3,6 +3,11 @@ variable "org_name" {
   description = "Organization identifier."
 }
 
+variable "repo_name" {
+  type        = string
+  description = "Repository identifier accepted from shared global tfvars. Not consumed by this module."
+}
+
 variable "aws_region" {
   type    = string
   default = "us-east-1"
