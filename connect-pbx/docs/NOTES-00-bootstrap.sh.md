@@ -49,7 +49,7 @@ Initialises Terraform with the local backend defined in `backend.tf` Phase 1. Do
 
 ### Line 13 - `terraform apply -auto-approve`
 
-Creates all bootstrap resources - S3 buckets, KMS key, IAM roles, and the legacy retained lock-table resource.
+Creates all bootstrap resources - S3 buckets, KMS key, and IAM roles.
 
 - `-auto-approve` - skips the interactive yes/no prompt
 - State is written to `bootstrap.tfstate` locally at this stage
