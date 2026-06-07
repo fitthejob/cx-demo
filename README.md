@@ -4,6 +4,21 @@ This repository currently centers on `connect-pbx/`, an infrastructure project f
 
 The goal is not just to provision AWS resources, but to give operators a repeatable way to bootstrap accounts, deploy environment-specific capabilities, validate module eligibility, and run day-to-day telephony operations with documentation close to the code.
 
+## Why this repo exists
+
+`connect-pbx/` is meant to show how I approach Amazon Connect platform design as a systems and solution architecture problem, not just a collection of Terraform modules.
+
+The repo models a modular Connect platform with:
+
+- account bootstrap and backend design
+- environment-aware deployment control
+- capability-pack driven module selection
+- dependency-aware rollout sequencing
+- GitHub OIDC based CI/CD
+- drift detection and operator-facing runbooks
+
+The focus is on how to make a Connect implementation operable, governable, and extensible across environments, especially when real-world constraints such as quota blockers, staged cutovers, optional telephony layers, and safe rollback paths are in play.
+
 ## What this project includes
 
 - Terraform modules for bootstrap, account baseline, audit pipeline, Amazon Connect, phone numbers, hours of operation, queues, contact flows, routing drift, CNAM, E911, spam reputation, and portability checks
@@ -46,6 +61,51 @@ Current layer groups in the catalog:
 - Layer 0: bootstrap, account baseline, audit pipeline
 - Layer 1: connect instance, phone numbers, hours of operation, queue architecture, contact flow framework
 
+High-level platform flow:
+
+1. Bootstrap creates the Terraform backend, KMS, and GitHub OIDC trust.
+2. Account baseline establishes the shared account foundation and environment KMS posture.
+3. Core telephony modules build the Connect instance, numbers, hours, queues, and contact flows in dependency order.
+4. Optional governance and migration modules layer on top without becoming accidental hard prerequisites.
+5. The local dashboard and GitHub Actions workflows both drive the same underlying Terraform contracts rather than introducing parallel deployment engines.
+
+## What this demonstrates
+
+This repo is strongest as evidence of:
+
+- Amazon Connect solution design across instance, routing, queue, hours, number, and contact-flow domains
+- Terraform modularization with explicit dependency management and environment manifests
+- CI/CD and identity design using GitHub OIDC instead of long-lived AWS credentials
+- operational design for safe rollout sequencing, re-apply behavior, destroy gating, and drift review
+- balancing platform standardization with optional layers such as audit operations, migration support, and number-governance modules
+- working through real platform constraints such as Connect quota blockers, backend locking changes, IAM hardening, and operator UX clarity
+
+## Current state
+
+This is currently a `dev`-first implementation and active working platform blueprint.
+
+A few important realities:
+
+- the repo is being exercised primarily against `dev` right now rather than a polished multi-environment production rollout
+- some modules are intentionally optional or migration-specific
+- drift detection and GitHub execution-role IAM coverage are being actively hardened
+- phone-number provisioning has been shaped by real Amazon Connect quota limitations, which influenced how optionality and deployment sequencing are handled
+
+That is intentional context for reviewers: this repo is meant to show architecture thinking, modular platform design, and operational reasoning in a realistic implementation, not a static marketing artifact.
+
+## How to review this repo
+
+If you are reviewing this as a portfolio piece, start here:
+
+1. `connect-pbx/modules/dependency-order.json` for the capability-pack and dependency model
+2. `connect-pbx/dashboard/` for the operator-facing deployment workflow and wave-based preview
+3. `connect-pbx/modules/bootstrap/` for backend, OIDC, and execution-role design
+4. representative domain modules such as:
+   - `connect-pbx/modules/l1-connect-instance/`
+   - `connect-pbx/modules/l1-phone-numbers/`
+   - `connect-pbx/modules/l1-contact-flow-framework/`
+5. `connect-pbx/docs/runbooks/` for the operational model and implementation guidance
+
 ## Prerequisites
 
 You will typically want the following installed before working in this repo:
@@ -62,7 +122,7 @@ You should also know which AWS account and environment you are targeting before 
 
 ### 1. Start with the bootstrap guide
 
-The first critical document is [connect-pbx/docs/DEPLOY-00-bootstrapping-guide.md](connect-pbx/docs/DEPLOY-00-bootstrapping-guide.md). It covers the one-time creation of the Terraform remote state backend, DynamoDB locking, KMS encryption, and GitHub OIDC roles.
+The first critical document is [connect-pbx/docs/DEPLOY-00-bootstrapping-guide.md](connect-pbx/docs/DEPLOY-00-bootstrapping-guide.md). It covers the one-time creation of the Terraform remote state backend, S3 lockfile-based state locking, KMS encryption, and GitHub OIDC roles.
 
 ### 2. Review the runbook index
 
