@@ -25,10 +25,10 @@ resource "aws_kms_key" "tfstate_bootstrap" {
     ]
     }
   )
-  tags = {PRD = "PRD-00", Scope = "bootstrap-only"}
+  tags = { PRD = "PRD-00", Scope = "bootstrap-only" }
 }
 
 resource "aws_kms_alias" "tfstate_bootstrap" {
-    name = "alias/${var.org_name}-tfstate-bootstrap"
-    target_key_id = aws_kms_key.tfstate_bootstrap.key_id
+  name          = "alias/${var.org_name}-tfstate-bootstrap"
+  target_key_id = aws_kms_key.tfstate_bootstrap.key_id
 }

@@ -245,23 +245,22 @@ terraform apply -auto-approve -var-file="${BOOTSTRAP_TFVARS_PATH}"
 echo "[3/5] Capturing outputs..."
 BUCKET_NAME=$(terraform output -raw state_bucket_name)
 KMS_KEY_ARN=$(terraform output -raw bootstrap_kms_key_arn)
-LOCK_TABLE=$(terraform output -raw lock_table_name)
 
 echo " State bucket: ${BUCKET_NAME}"
 echo " Bootstrap key: ${KMS_KEY_ARN}"
-echo " Lock table: ${LOCK_TABLE}"
+echo " Locking mode: S3 native lockfile"
 
 echo "[4/5] Migrating state to remote backend..."
 
 cat > backend.tf <<EOF
 terraform {
   backend "s3" {
-    bucket         = "${BUCKET_NAME}"
-    key            = "bootstrap/terraform.tfstate"
-    region         = "${AWS_REGION:-us-east-1}"
-    encrypt        = true
-    kms_key_id     = "${KMS_KEY_ARN}"
-    dynamodb_table = "${LOCK_TABLE}"
+    bucket       = "${BUCKET_NAME}"
+    key          = "bootstrap/terraform.tfstate"
+    region       = "${AWS_REGION:-us-east-1}"
+    encrypt      = true
+    kms_key_id   = "${KMS_KEY_ARN}"
+    use_lockfile = true
   }
 }
 EOF
@@ -269,12 +268,12 @@ EOF
 mkdir -p "${BOOTSTRAP_ARTIFACT_DIR}"
 
 cat > "${BACKEND_ARTIFACT_PATH}" <<EOF
-bucket         = "${BUCKET_NAME}"
-key            = "bootstrap/terraform.tfstate"
-region         = "${AWS_REGION:-us-east-1}"
-encrypt        = true
-kms_key_id     = "${KMS_KEY_ARN}"
-dynamodb_table = "${LOCK_TABLE}"
+bucket       = "${BUCKET_NAME}"
+key          = "bootstrap/terraform.tfstate"
+region       = "${AWS_REGION:-us-east-1}"
+encrypt      = true
+kms_key_id   = "${KMS_KEY_ARN}"
+use_lockfile = true
 EOF
 
 terraform init \
@@ -285,7 +284,7 @@ terraform init \
     -backend-config="region=${AWS_REGION:-us-east-1}" \
     -backend-config="encrypt=true" \
     -backend-config="kms_key_id=${KMS_KEY_ARN}" \
-    -backend-config="dynamodb_table=${LOCK_TABLE}"
+    -backend-config="use_lockfile=true"
 
 echo "[5/5] Verifying remote state..."
 terraform state list

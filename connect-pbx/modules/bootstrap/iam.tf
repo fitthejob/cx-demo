@@ -158,28 +158,6 @@ resource "aws_iam_role_policy" "terraform_execution_s3" {
   })
 }
 
-resource "aws_iam_role_policy" "terraform_execution_dynamo_db" {
-  name = "${var.org_name}-terraform-execution-dynamo-db"
-  role = aws_iam_role.terraform_execution.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Sid    = "DynamoDBLockAccess"
-        Effect = "Allow"
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:DeleteItem",
-          "dynamodb:DescribeTable",
-        ]
-        Resource = aws_dynamodb_table.tfstate_lock.arn
-      }
-    ]
-  })
-}
-
 resource "aws_iam_role_policy" "terraform_execution_kms" {
   name = "${var.org_name}-terraform-execution-kms"
   role = aws_iam_role.terraform_execution.id

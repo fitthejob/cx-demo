@@ -249,7 +249,7 @@ def collect_github_status(environment: str) -> dict[str, Any]:
         return status
 
     secret_names = {secret.get("name", "") for secret in secrets_doc.get("secrets", []) if secret.get("name")}
-    required_bootstrap_secrets = {"AWS_ACCOUNT_ID", "AWS_REGION", "STATE_BUCKET", "LOCK_TABLE", "TF_EXEC_ROLE_ARN"}
+    required_bootstrap_secrets = {"AWS_ACCOUNT_ID", "AWS_REGION", "STATE_BUCKET", "TF_EXEC_ROLE_ARN"}
     present_bootstrap_count = len(required_bootstrap_secrets & secret_names)
 
     if present_bootstrap_count == len(required_bootstrap_secrets):

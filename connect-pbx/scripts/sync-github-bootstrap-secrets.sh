@@ -29,7 +29,6 @@ Secrets written:
   AWS_ACCOUNT_ID
   AWS_REGION
   STATE_BUCKET
-  LOCK_TABLE
   TF_EXEC_ROLE_ARN
 
 Notes:
@@ -120,13 +119,11 @@ terraform -chdir="${BOOTSTRAP_MODULE}" init \
   "-backend-config=${BACKEND_CONFIG_PATH}"
 
 STATE_BUCKET="$(terraform -chdir="${BOOTSTRAP_MODULE}" output -raw state_bucket_name)"
-LOCK_TABLE="$(terraform -chdir="${BOOTSTRAP_MODULE}" output -raw lock_table_name)"
 TF_EXEC_ROLE_ARN="$(terraform -chdir="${BOOTSTRAP_MODULE}" output -raw terraform_execution_role_arn)"
 
 set_secret "AWS_ACCOUNT_ID" "${ACCOUNT_ID}"
 set_secret "AWS_REGION" "${REGION}"
 set_secret "STATE_BUCKET" "${STATE_BUCKET}"
-set_secret "LOCK_TABLE" "${LOCK_TABLE}"
 set_secret "TF_EXEC_ROLE_ARN" "${TF_EXEC_ROLE_ARN}"
 
 echo
@@ -134,7 +131,6 @@ echo "Updated GitHub Actions environment secrets:"
 echo "  - AWS_ACCOUNT_ID"
 echo "  - AWS_REGION"
 echo "  - STATE_BUCKET"
-echo "  - LOCK_TABLE"
 echo "  - TF_EXEC_ROLE_ARN"
 echo
 echo "Bootstrap-only sync complete."

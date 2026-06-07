@@ -59,7 +59,6 @@ Collect these values first:
 | `AWS_REGION` | Bootstrap/account region, usually `us-east-1` |
 | `TF_EXEC_ROLE_ARN` | `terraform_execution_role_arn` output from PRD-00 |
 | `STATE_BUCKET` | `state_bucket_name` output from PRD-00 |
-| `LOCK_TABLE` | `lock_table_name` output from PRD-00 |
 | `ENV_KMS_KEY_ARN` | `kms_key_arn` output from PRD-02 for the target workspace |
 | `SNS_ALERT_TOPIC_ARN` | Optional. Set only when PRD-03 alerting is deployed |
 
@@ -116,7 +115,6 @@ After bootstrap, the following environment secrets can be populated safely befor
 | `AWS_REGION` | Yes | Usually `us-east-1` |
 | `TF_EXEC_ROLE_ARN` | Yes | From PRD-00 |
 | `STATE_BUCKET` | Yes | From PRD-00 |
-| `LOCK_TABLE` | Yes | From PRD-00; used for Terraform state locking |
 | `AWS_ACCOUNT_ID` | No | Operator sanity-check value only |
 
 These values are written automatically by `github-env-bootstrap.sh` or `sync-github-bootstrap-secrets.sh`.
@@ -160,14 +158,13 @@ terraform output state_bucket_name
 
 What the bootstrap helper does:
 - reads `AWS_ACCOUNT_ID` from `aws sts get-caller-identity`
-- reads `STATE_BUCKET`, `LOCK_TABLE`, and `TF_EXEC_ROLE_ARN` from `modules/bootstrap`
+- reads `STATE_BUCKET` and `TF_EXEC_ROLE_ARN` from `modules/bootstrap`
 - writes those values into the matching GitHub Actions environment with `gh secret set`
 
 Secrets written by the bootstrap helper:
 - `AWS_ACCOUNT_ID`
 - `AWS_REGION`
 - `STATE_BUCKET`
-- `LOCK_TABLE`
 - `TF_EXEC_ROLE_ARN`
 
 Optional flags:
@@ -194,7 +191,7 @@ cd connect-pbx
 
 What the script does:
 - reads `AWS_ACCOUNT_ID` from `aws sts get-caller-identity`
-- reads `STATE_BUCKET`, `LOCK_TABLE`, and `TF_EXEC_ROLE_ARN` from `modules/bootstrap`
+- reads `STATE_BUCKET` and `TF_EXEC_ROLE_ARN` from `modules/bootstrap`
 - initializes `modules/l0-account-baseline` against the remote backend
 - runs `terraform workspace select <env>` explicitly
 - reads `ENV_KMS_KEY_ARN` from that selected workspace
@@ -291,7 +288,7 @@ Use these checks when a workflow fails early:
 | Symptom | First check |
 |---|---|
 | OIDC or AWS auth failure | Confirm `TF_EXEC_ROLE_ARN` and `AWS_REGION` in the target GitHub environment |
-| Backend init failure | Confirm `STATE_BUCKET`, `LOCK_TABLE`, `ENV_KMS_KEY_ARN`, and the GitHub environment's AWS region are correct for that environment |
+| Backend init failure | Confirm `STATE_BUCKET`, `ENV_KMS_KEY_ARN`, and the GitHub environment's AWS region are correct for that environment, and verify the backend is using `use_lockfile=true` |
 | Module rejected before plan | Confirm the module is enabled in `environments/<env>/deployment-manifest.json` |
 | Missing tfvars failure | Confirm the module's required environment tfvars file exists under `environments/<env>/` |
 | No SNS drift alert | Confirm `SNS_ALERT_TOPIC_ARN` is set; otherwise drift falls back to log-only behavior |

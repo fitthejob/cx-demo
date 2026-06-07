@@ -104,7 +104,7 @@ jobs:
             -backend-config="region=${{ secrets.AWS_REGION }}" \
             -backend-config="encrypt=true" \
             -backend-config="kms_key_id=${{ secrets.ENV_KMS_KEY_ARN }}" \
-            -backend-config="dynamodb_table=${{ secrets.LOCK_TABLE }}"
+            -backend-config="use_lockfile=true"
 
       - name: Select Workspace
         if: steps.metadata.outputs.workspace_scoped == 'true'

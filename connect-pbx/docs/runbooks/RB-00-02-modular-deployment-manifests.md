@@ -502,7 +502,7 @@ The following notes summarize the current Terraform-managed ownership model for 
 
 Keeps:
 
-- the bootstrap state-lock table from `modules/bootstrap`
+- no bootstrap-owned DynamoDB backend lock resource; bootstrap retains the S3 backend and its lockfile objects
 
 Destroys:
 
@@ -512,7 +512,7 @@ Destroys:
 
 Keeps:
 
-- the bootstrap state-lock table from `modules/bootstrap`
+- no bootstrap-owned DynamoDB backend lock resource; bootstrap retains the S3 backend and its lockfile objects
 
 Destroys:
 
@@ -523,11 +523,11 @@ Destroys:
 
 Targets:
 
-- all Terraform-managed DynamoDB tables, including the bootstrap lock table
+- all Terraform-managed DynamoDB tables owned by enabled modules; bootstrap backend locking is no longer DynamoDB-based
 
 Important:
 
-- bootstrap remains a manual blocker in automation today, so full removal of the backend lock table still requires the separate bootstrap-destroy path
+- bootstrap remains a manual blocker in automation today, so full removal of backend bucket contents and stale lockfile objects still requires the separate bootstrap-destroy path
 
 ### CloudWatch Logs And Alarms
 
