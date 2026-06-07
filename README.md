@@ -130,9 +130,9 @@ Future buildout is documented in a larger PRD set covering areas such as:
 - Deeper observability, alerting, and FinOps coverage
 - Migration and consolidation workflows
 
-To keep the main repo surface readable and focused on the active implementation, those broader planning PRDs are maintained outside the tracked project contents.
+To keep the main repo surface readable and focused on the active implementation, those broader planning PRDs are intentionally maintained outside the tracked project contents and are gitignored from this public repo snapshot.
 
-Additional architecture and planning materials are available upon request for solution review conversations when deeper roadmap context would be helpful.
+Additional architecture and roadmap materials can be shared separately during solution review conversations when deeper planning context would be helpful.
 
 ## Representative scenarios
 
