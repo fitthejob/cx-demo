@@ -200,6 +200,7 @@ resource "aws_iam_role_policy" "terraform_execution_connect_read" {
         Effect = "Allow"
         Action = [
           "connect:DescribeQueue",
+          "connect:ListQueueQuickConnects",
         ]
         Resource = "arn:aws:connect:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*/queue/*"
       },
@@ -210,6 +211,22 @@ resource "aws_iam_role_policy" "terraform_execution_connect_read" {
           "connect:DescribeContactFlow",
         ]
         Resource = "arn:aws:connect:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*/contact-flow/*"
+      },
+      {
+        Sid    = "ConnectSecurityProfileRead"
+        Effect = "Allow"
+        Action = [
+          "connect:DescribeSecurityProfile",
+        ]
+        Resource = "arn:aws:connect:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*/security-profile/*"
+      },
+      {
+        Sid    = "ConnectInstanceStorageConfigRead"
+        Effect = "Allow"
+        Action = [
+          "connect:DescribeInstanceStorageConfig",
+        ]
+        Resource = "arn:aws:connect:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*"
       }
     ]
   })
@@ -227,14 +244,16 @@ resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
         Effect = "Allow"
         Action = [
           "cloudwatch:DescribeAlarms",
+          "cloudwatch:ListTagsForResource",
         ]
         Resource = "*"
       },
       {
-        Sid    = "LogsMetricFilterRead"
+        Sid    = "LogsRead"
         Effect = "Allow"
         Action = [
           "logs:DescribeMetricFilters",
+          "logs:DescribeLogGroups",
         ]
         Resource = "*"
       },
@@ -243,6 +262,7 @@ resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
         Effect = "Allow"
         Action = [
           "dynamodb:DescribeTable",
+          "dynamodb:DescribeContinuousBackups",
         ]
         Resource = "arn:aws:dynamodb:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/${var.org_name}-*"
       },
@@ -251,6 +271,7 @@ resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
         Effect = "Allow"
         Action = [
           "events:DescribeRule",
+          "events:ListTagsForResource",
         ]
         Resource = "arn:aws:events:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:rule/${var.org_name}-*"
       },
@@ -259,6 +280,7 @@ resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
         Effect = "Allow"
         Action = [
           "lambda:GetFunction",
+          "lambda:ListVersionsByFunction",
         ]
         Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:${var.org_name}-*"
       },
@@ -267,8 +289,9 @@ resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
         Effect = "Allow"
         Action = [
           "ssm:GetParameter",
+          "ssm:DescribeParameters",
         ]
-        Resource = "arn:aws:ssm:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:parameter/${var.org_name}/*"
+        Resource = "*"
       }
     ]
   })
