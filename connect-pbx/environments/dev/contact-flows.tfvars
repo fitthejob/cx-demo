@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------
-# Contact Flow Configuration — dev environment
+# Contact Flow Configuration - dev environment
 # ---------------------------------------------------------------
 # This file controls customer-facing prompt text and the mapping from
 # claimed phone numbers to PRD-14 contact flows.
@@ -23,5 +23,18 @@ flow_prompts = {
 }
 
 number_flow_associations = {
-  main-inbound = "main-inbound"
+  # ZERO-NUMBER DEV MODE:
+  # Leave this map empty while PRD-11 is intentionally managing zero
+  # claimed numbers in dev.
+  #
+  # HOW TO RESTORE TRUE PROVISIONED NUMBER MODE
+  #   1. Restore the desired number entries in
+  #      environments/dev/phone-numbers.tfvars.
+  #   2. Apply PRD-11 first so phone_number_ids and
+  #      phone_number_inventory are populated.
+  #   3. Uncomment the association(s) below.
+  #   4. Apply PRD-14 to bind the claimed number(s) to the target
+  #      flow(s).
+
+  # main-inbound = "main-inbound"
 }

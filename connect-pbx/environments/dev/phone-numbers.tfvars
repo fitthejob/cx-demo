@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------
-# Phone Number Inventory — dev environment
+# Phone Number Inventory - dev environment
 # ---------------------------------------------------------------
 # HOW TO ADD A NUMBER
 #   1. Uncomment a stub below and fill in the fields, or copy a stub
@@ -10,7 +10,7 @@
 #   4. Check the phone_number_inventory output to see the actual E.164
 #      digits that were assigned.
 #
-# HOW TO REMOVE A NUMBER (two-step process — prevent_destroy is active)
+# HOW TO REMOVE A NUMBER (two-step process - prevent_destroy is active)
 #   Step 1: Remove the lifecycle prevent_destroy block for that number
 #           in main.tf, open a PR, merge, apply.
 #   Step 2: Remove the entry from this file, open a PR, merge, apply.
@@ -23,7 +23,7 @@
 #   prefix:       Optional area code hint e.g. "+1212" (NYC), "+1415" (SF).
 #                 null = accept any available number in the country.
 #                 AWS does not guarantee prefix availability. If unavailable,
-#                 the apply fails with an error — try a different prefix.
+#                 the apply fails with an error - try a different prefix.
 #   purpose:      Human label for routing and reporting (main-inbound,
 #                 sales, support, billing, etc.)
 #   cost_center:  Business unit for cost allocation tagging.
@@ -38,19 +38,30 @@
 
 phone_numbers = {
 
-  # --- ACTIVE (provisioned on first deploy) ---
-
-  main-inbound = {
-    description  = "Main inbound DID — primary customer-facing number"
-    type         = "DID"
-    country_code = "US"
-    prefix       = null
-    purpose      = "main-inbound"
-    cost_center  = "operations"
-    cnam_name    = "MAIN LINE"
-  }
+  # --- ZERO-NUMBER DEV MODE ---
+  # Leave this map empty while dev must deploy without claiming any
+  # Amazon Connect phone numbers.
+  #
+  # HOW TO RESTORE TRUE PROVISIONED NUMBER MODE
+  #   1. Uncomment the main-inbound block below, or add the exact number
+  #      inventory you want dev to claim.
+  #   2. Apply PRD-11 (modules/l1-phone-numbers).
+  #   3. Restore number_flow_associations in
+  #      environments/dev/contact-flows.tfvars.
+  #   4. Apply PRD-14 (modules/l1-contact-flow-framework) so the
+  #      claimed number is associated to the intended flow.
 
   # --- STUBS (uncomment and fill to provision) ---
+
+  # main-inbound = {
+  #   description  = "Main inbound DID - primary customer-facing number"
+  #   type         = "DID"
+  #   country_code = "US"
+  #   prefix       = null
+  #   purpose      = "main-inbound"
+  #   cost_center  = "operations"
+  #   cnam_name    = "MAIN LINE"
+  # }
 
   # sales = {
   #   description  = "Sales team direct DID"
@@ -86,7 +97,7 @@ phone_numbers = {
   #   description  = "National toll-free main number"
   #   type         = "TOLL_FREE"
   #   country_code = "US"
-  #   prefix       = null   # e.g. "+1800" or "+1888" — not guaranteed
+  #   prefix       = null   # e.g. "+1800" or "+1888" - not guaranteed
   #   purpose      = "main-inbound-tollfree"
   #   cost_center  = "operations"
   # }
