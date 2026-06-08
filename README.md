@@ -1,12 +1,14 @@
-# CONNECT PBX - RAPID CONTACT CENTER DEPLOYMENT
+# MODULAR AMAZON CONNECT IMPLEMENTATION ACCELERATOR
 
-This repository currently centers on `connect-pbx/`, an infrastructure project for building and operating an Amazon Connect based PBX/contact-center platform with Terraform, manifest-driven module selection, operator runbooks, and a lightweight local deployment dashboard.
+This repository currently centers on `connect-pbx/`, an implementation accelerator for rapidly deploying a standardized, operable Amazon Connect baseline with Terraform, manifest-driven module selection, GitHub-based CI/CD, operator runbooks, and a lightweight local deployment dashboard.
 
-The goal is not just to provision AWS resources, but to give operators a fast, repeatable way to bootstrap accounts, deploy environment-specific capabilities, validate module eligibility, and run day-to-day telephony operations with documentation close to the code.
+Amazon Connect is powerful, but every new instance begins as a blank slate. The goal here is to reduce the time, inconsistency, and operational risk that come with building each environment by hand by giving teams a repeatable baseline they can deploy quickly, operate safely, and extend in controlled ways as requirements grow.
 
 ## Why this repo exists
 
-The focus of this project is to show how it is possible to achieve standard, rapidly deployable Connect implementations that are operable, governable, and extensible across environments.
+The focus of this project is to make Amazon Connect implementations faster to launch, easier to standardize, and safer to operate.
+
+Instead of rebuilding the same foundations manually for every environment, this repo provides a repeatable baseline that establishes account setup, backend state, deployment guardrails, and core telephony in a consistent sequence. From that starting point, teams can extend the platform through modular capability packs as implementation size, complexity, and governance needs increase.
 
 The repo models a modular Connect platform with:
 
