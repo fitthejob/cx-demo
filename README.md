@@ -1,4 +1,4 @@
-# SANDBOX-MEGA-TELCOGO
+# CONNECT PBX - RAPID CONTACT CENTER DEPLOYMENT
 
 This repository currently centers on `connect-pbx/`, an infrastructure project for building and operating an Amazon Connect based PBX/contact-center platform with Terraform, manifest-driven module selection, operator runbooks, and a lightweight local deployment dashboard.
 
@@ -6,7 +6,7 @@ The goal is not just to provision AWS resources, but to give operators a repeata
 
 ## Why this repo exists
 
-`connect-pbx/` is meant to show how I approach Amazon Connect platform design as a systems and solution architecture problem, not just a collection of Terraform modules.
+The focus of this project is to show how it is possible to achieve standard, rapidly deployable Connect implementations that are operable, governable, and extensible across environments.
 
 The repo models a modular Connect platform with:
 
@@ -17,16 +17,13 @@ The repo models a modular Connect platform with:
 - GitHub OIDC based CI/CD
 - Drift detection and operator-facing runbooks
 
-The focus is on how to make a Connect implementation operable, governable, and extensible across environments, especially when real-world constraints such as quota blockers, staged cutovers, optional telephony layers, and safe rollback paths are in play.
-
 ## What this project includes
 
 - Terraform modules for bootstrap, account baseline, audit pipeline, Amazon Connect, phone numbers, hours of operation, queues, contact flows, routing drift, CNAM, E911, spam reputation, and portability checks
+- A local web-based dashboard that wraps the repo's existing deployment contracts
 - Environment-specific deployment manifests for `dev`, `staging`, and `prod`
-- A manifest helper that validates module metadata and resolves which modules are eligible for plan, apply, audit, and destroy actions
 - Shell scripts for Terraform execution, audit reporting, teardown, redeploy, and GitHub Actions secret synchronization
 - Operator runbooks for provisioning, migration, routing, phone number operations, emergency closure, and queue/contact-flow management
-- A local Python dashboard that wraps the repo's existing deployment contracts instead of introducing a second deployment engine
 
 ## Repository layout
 
@@ -56,7 +53,7 @@ Current environments in the repo:
 - `staging`
 - `prod`
 
-Current layer groups in the catalog:
+Current layer groups avaiable in the dashboard:
 
 - Layer 0: bootstrap, account baseline, audit pipeline
 - Layer 1: connect instance, phone numbers, hours of operation, queue architecture, contact flow framework
