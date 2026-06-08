@@ -2,7 +2,7 @@
 
 This repository currently centers on `connect-pbx/`, an infrastructure project for building and operating an Amazon Connect based PBX/contact-center platform with Terraform, manifest-driven module selection, operator runbooks, and a lightweight local deployment dashboard.
 
-The goal is not just to provision AWS resources, but to give operators a repeatable way to bootstrap accounts, deploy environment-specific capabilities, validate module eligibility, and run day-to-day telephony operations with documentation close to the code.
+The goal is not just to provision AWS resources, but to give operators a fast, repeatable way to bootstrap accounts, deploy environment-specific capabilities, validate module eligibility, and run day-to-day telephony operations with documentation close to the code.
 
 ## Why this repo exists
 
