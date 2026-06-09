@@ -232,15 +232,6 @@ The dashboard shows manifest-enabled modules, adds required dependencies automat
 
 Use `connect-pbx/scripts/tf-run.sh` for routine Terraform execution. It validates the manifest, confirms the selected environment and module, and uses environment tfvars plus backend configuration derived from bootstrap artifacts.
 
-### Produce a read-only Terraform audit report
-
-```bash
-cd connect-pbx
-./scripts/tf-plan-audit.sh dev
-```
-
-This generates a markdown report under `connect-pbx/reports/plan-audits/` and runs `terraform plan` in read-only audit mode.
-
 ### Sync GitHub Actions environment secrets
 
 After bootstrap or baseline deployment, the repo includes helpers to populate GitHub environment secrets:
