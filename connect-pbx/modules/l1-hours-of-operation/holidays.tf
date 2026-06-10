@@ -50,5 +50,9 @@ resource "aws_dynamodb_table" "daily_closure_status" {
     kms_key_arn = local.env_kms_key_arn
   }
 
+  point_in_time_recovery {
+    enabled = true
+  }
+
   tags = local.common_tags
 }

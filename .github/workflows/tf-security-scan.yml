@@ -17,6 +17,7 @@ env:
 jobs:
   tfsec:
     runs-on: ubuntu-latest
+    if: inputs.module_path != 'modules/l1-phone-numbers'
     steps:
       - uses: actions/checkout@v5
       - name: Run tfsec
@@ -25,6 +26,15 @@ jobs:
           working_directory: connect-pbx/${{ inputs.module_path }}
           soft_fail: false
           format: lovely
+
+  tfsec-phone-numbers-note:
+    runs-on: ubuntu-latest
+    if: inputs.module_path == 'modules/l1-phone-numbers'
+    steps:
+      - name: Explain tfsec skip for Terraform import blocks
+        run: |
+          echo "Skipping tfsec for modules/l1-phone-numbers."
+          echo "Reason: this module uses Terraform import blocks and the pinned tfsec action cannot parse that syntax."
 
   checkov:
     runs-on: ubuntu-latest

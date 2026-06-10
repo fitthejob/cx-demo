@@ -4,6 +4,9 @@ data "archive_file" "holiday_check" {
   output_path = "${path.module}/holiday_check.zip"
 }
 
+#checkov:skip=CKV_AWS_116: PRD-12 baseline relies on EventBridge and DynamoDB Streams retry semantics plus CloudWatch alarms instead of a separate DLQ.
+#checkov:skip=CKV_AWS_115: Reserved concurrency is intentionally left unset in the reusable baseline until workload-specific limits are known.
+#checkov:skip=CKV_AWS_117: This Lambda only uses AWS-managed services and intentionally stays out of a VPC to avoid unnecessary NAT and cold-start overhead.
 resource "aws_lambda_function" "holiday_check" {
   function_name    = "${var.org_name}-holiday-check-${terraform.workspace}"
   runtime          = "python3.12"
@@ -13,6 +16,11 @@ resource "aws_lambda_function" "holiday_check" {
   source_code_hash = data.archive_file.holiday_check.output_base64sha256
   timeout          = 30
   memory_size      = 128
+  kms_key_arn      = local.env_kms_key_arn
+
+  tracing_config {
+    mode = "Active"
+  }
 
   environment {
     variables = {
