@@ -160,6 +160,7 @@ resource "aws_iam_role_policy" "terraform_execution_s3" {
         Action = [
           "s3:GetBucketAcl",
           "s3:GetBucketCORS",
+          "s3:GetBucketWebsite",
           "s3:GetBucketLocation",
           "s3:GetBucketTagging",
           "s3:ListBucket",
