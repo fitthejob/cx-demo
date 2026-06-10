@@ -123,6 +123,14 @@ def save_json(path: Path, payload: Any) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
+def deployment_profile_name_for_enabled_packs(enabled_packs: list[str]) -> str:
+    if "core-telephony" in enabled_packs and "audit-operations" in enabled_packs:
+        return "core-telephony-audit-enabled"
+    if "core-telephony" in enabled_packs:
+        return "core-telephony"
+    return "custom"
+
+
 def update_manifest_capability_pack(environment: str, capability_pack_id: str, enabled: bool) -> dict[str, Any]:
     manifest_path = environment_manifest_path(environment)
     manifest = load_json(manifest_path)
@@ -144,6 +152,7 @@ def update_manifest_capability_pack(environment: str, capability_pack_id: str, e
 
     updated_manifest = {
         **manifest,
+        "deployment_profile_name": deployment_profile_name_for_enabled_packs(enabled_packs),
         "enabled_capability_packs": enabled_packs,
     }
 
