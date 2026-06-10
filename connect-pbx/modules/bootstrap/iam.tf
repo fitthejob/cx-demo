@@ -271,6 +271,7 @@ resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
         Action = [
           "dynamodb:DescribeTable",
           "dynamodb:DescribeContinuousBackups",
+          "dynamodb:DescribeTimeToLive",
         ]
         Resource = "arn:aws:dynamodb:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/${var.org_name}-*"
       },
@@ -299,6 +300,7 @@ resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
         Action = [
           "ssm:GetParameter",
           "ssm:DescribeParameters",
+          "ssm:ListTagsForResource",
         ]
         Resource = "*"
       }
