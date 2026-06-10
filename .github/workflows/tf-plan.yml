@@ -134,7 +134,10 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: tfplan-${{ steps.metadata.outputs.module_slug }}-${{ inputs.environment }}-${{ github.run_id }}
-          path: connect-pbx/${{ inputs.module_path }}/tfplan.binary
+          path: |
+            connect-pbx/${{ inputs.module_path }}/tfplan.binary
+            connect-pbx/${{ inputs.module_path }}/*.zip
+            connect-pbx/${{ inputs.module_path }}/.build/*.zip
           if-no-files-found: error
           retention-days: 30
 
