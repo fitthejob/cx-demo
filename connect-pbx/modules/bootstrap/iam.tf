@@ -164,6 +164,7 @@ resource "aws_iam_role_policy" "terraform_execution_s3" {
           "s3:GetBucketRequestPayment",
           "s3:GetAccelerateConfiguration",
           "s3:GetReplicationConfiguration",
+          "s3:GetBucketObjectLockConfiguration",
           "s3:GetBucketLocation",
           "s3:GetBucketTagging",
           "s3:ListBucket",
