@@ -188,6 +188,7 @@ resource "aws_iam_role_policy" "terraform_execution_s3" {
           "s3:PutLifecycleConfiguration",
           "s3:PutBucketVersioning",
           "s3:PutBucketPublicAccessBlock",
+          "s3:PutBucketPolicy",
           "s3:DeleteBucketPolicy",
         ]
         Resource = "arn:aws:s3:::${var.org_name}-connect-recordings-placeholder-${data.aws_caller_identity.current.account_id}"
