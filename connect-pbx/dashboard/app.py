@@ -119,6 +119,40 @@ def environment_manifest_path(environment: str) -> Path:
     return ENVIRONMENTS_ROOT / environment / "deployment-manifest.json"
 
 
+def save_json(path: Path, payload: Any) -> None:
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def update_manifest_capability_pack(environment: str, capability_pack_id: str, enabled: bool) -> dict[str, Any]:
+    manifest_path = environment_manifest_path(environment)
+    manifest = load_json(manifest_path)
+    catalog = load_json(CATALOG_PATH)
+    packs_by_id = capability_pack_map(catalog)
+
+    if capability_pack_id not in packs_by_id:
+        raise ValueError(f"Unknown capability pack: {capability_pack_id}")
+
+    enabled_packs = list(manifest.get("enabled_capability_packs", []))
+    if not isinstance(enabled_packs, list):
+        raise ValueError("Manifest enabled_capability_packs must be a list.")
+
+    enabled_packs = [pack_id for pack_id in enabled_packs if isinstance(pack_id, str)]
+    if enabled and capability_pack_id not in enabled_packs:
+        enabled_packs.append(capability_pack_id)
+    if not enabled:
+        enabled_packs = [pack_id for pack_id in enabled_packs if pack_id != capability_pack_id]
+
+    updated_manifest = {
+        **manifest,
+        "enabled_capability_packs": enabled_packs,
+    }
+
+    # Validate the resulting manifest before persisting it.
+    resolve_enabled_module_paths(catalog, updated_manifest)
+    save_json(manifest_path, updated_manifest)
+    return updated_manifest
+
+
 def read_tfvar_string(path: Path, key: str) -> str | None:
     if not path.exists():
         return None
@@ -1133,6 +1167,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/resolve":
             self._handle_api_resolve(body)
             return
+        if parsed.path == "/api/manifest/capability-pack":
+            self._handle_api_manifest_capability_pack(body)
+            return
         if parsed.path == "/api/run":
             self._handle_api_run(body)
             return
@@ -1211,6 +1248,35 @@ class DashboardHandler(BaseHTTPRequestHandler):
             )
             return
         self._write_json(HTTPStatus.ACCEPTED, task.as_dict())
+
+    def _handle_api_manifest_capability_pack(self, body: dict[str, Any]) -> None:
+        environment = body.get("environment")
+        capability_pack_id = body.get("capability_pack_id")
+        enabled = body.get("enabled")
+
+        if not isinstance(environment, str) or not environment:
+            self._write_json(HTTPStatus.BAD_REQUEST, {"error": "environment is required."})
+            return
+        if not isinstance(capability_pack_id, str) or not capability_pack_id:
+            self._write_json(HTTPStatus.BAD_REQUEST, {"error": "capability_pack_id is required."})
+            return
+        if not isinstance(enabled, bool):
+            self._write_json(HTTPStatus.BAD_REQUEST, {"error": "enabled must be a boolean."})
+            return
+
+        try:
+            manifest = update_manifest_capability_pack(environment, capability_pack_id, enabled)
+        except Exception as exc:
+            self._write_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+            return
+
+        self._write_json(
+            HTTPStatus.OK,
+            {
+                "environment": environment,
+                "manifest": manifest,
+            },
+        )
 
     def _write_json(self, status: HTTPStatus, payload: dict[str, Any]) -> None:
         data = json.dumps(payload).encode("utf-8")

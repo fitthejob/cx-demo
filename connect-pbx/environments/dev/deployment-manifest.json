@@ -2,8 +2,7 @@
   "version": "1.0",
   "deployment_profile_name": "core-telephony-audit-enabled",
   "enabled_capability_packs": [
-    "core-telephony",
-    "audit-operations"
+    "core-telephony"
   ],
   "enabled_modules": [],
   "disabled_modules": []

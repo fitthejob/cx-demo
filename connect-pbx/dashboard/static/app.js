@@ -1,6 +1,7 @@
 const state = {
   environment: "dev",
   availableEnvironments: [],
+  manifest: null,
   modules: [],
   enabledModulePaths: [],
   actionMode: "apply",
@@ -83,6 +84,7 @@ const DASHBOARD_ROLLUPS = [
     id: "pack:platform-foundation",
     title: "Platform Foundation Pack",
     capabilityPackName: "Platform Foundation",
+    optionalCapabilityPackId: "audit-operations",
     primaryPaths: ["modules/l0-account-baseline"],
     optionalPaths: ["modules/l0-audit-pipeline"],
     operatorManagedPaths: ["modules/bootstrap"],
@@ -337,6 +339,36 @@ function renderAccountScopeNotice(message) {
   }
 
   els.accountScopeInfoButton.classList.remove("hidden");
+}
+
+function isCapabilityPackEnabled(capabilityPackId) {
+  if (!capabilityPackId) {
+    return false;
+  }
+  const enabledPacks = state.manifest?.enabled_capability_packs;
+  return Array.isArray(enabledPacks) && enabledPacks.includes(capabilityPackId);
+}
+
+async function updateCapabilityPackManifest(capabilityPackId, enabled, definition) {
+  await requestJson("/api/manifest/capability-pack", {
+    method: "POST",
+    body: JSON.stringify({
+      environment: state.environment,
+      capability_pack_id: capabilityPackId,
+      enabled,
+    }),
+  });
+
+  await loadState({ environment: state.environment, reason: "manifest-update" });
+
+  if (enabled) {
+    definition.primaryPaths.forEach((path) => state.selected.add(path));
+    definition.optionalPaths.forEach((path) => state.selected.add(path));
+  } else {
+    definition.optionalPaths.forEach((path) => state.selected.delete(path));
+  }
+
+  await resolveSelection();
 }
 
 function renderRunPlaceholder(status, detail, { hideMeta = false } = {}) {
@@ -679,8 +711,8 @@ function syncRollupSelectionConstraints() {
   });
 }
 
-function rollupAddonStatusText(optionalAvailable, addonUnlocked) {
-  if (!optionalAvailable) {
+function rollupAddonStatusText(optionalEnabledInManifest, addonUnlocked) {
+  if (!optionalEnabledInManifest) {
     return "Not enabled by the current manifest.";
   }
   if (!addonUnlocked) {
@@ -697,14 +729,14 @@ function rollupMemberFallback(definition, path) {
   return definition.pathFallbacks?.[path] || "Module missing from dashboard state.";
 }
 
-function rollupAddonStatusTextForDefinition(definition, optionalAvailable, addonUnlocked) {
-  if (!optionalAvailable) {
-    return definition.addonUnavailableDetail || rollupAddonStatusText(optionalAvailable, addonUnlocked);
+function rollupAddonStatusTextForDefinition(definition, optionalEnabledInManifest, addonUnlocked) {
+  if (!optionalEnabledInManifest) {
+    return definition.addonUnavailableDetail || rollupAddonStatusText(optionalEnabledInManifest, addonUnlocked);
   }
   if (!addonUnlocked) {
-    return definition.addonLockedDetail || rollupAddonStatusText(optionalAvailable, addonUnlocked);
+    return definition.addonLockedDetail || rollupAddonStatusText(optionalEnabledInManifest, addonUnlocked);
   }
-  return definition.addonAvailableDetail || rollupAddonStatusText(optionalAvailable, addonUnlocked);
+  return definition.addonAvailableDetail || rollupAddonStatusText(optionalEnabledInManifest, addonUnlocked);
 }
 
 function renderRollupStatusLines(definition, context) {
@@ -1052,6 +1084,7 @@ async function loadState(environment) {
     }
     state.environment = data.environment;
     state.availableEnvironments = data.available_environments;
+    state.manifest = data.manifest;
     state.modules = data.modules;
     state.enabledModulePaths = data.enabled_module_paths;
     state.resolution = null;
@@ -1652,12 +1685,10 @@ function renderModules() {
         : rollupAutoAdded
           ? `<button type="button" class="selection-indicator auto-added" data-promote-rollup="${definition.id}" title="${labels.autoAddedTitle}" aria-label="${labels.autoAddedTitle}" ${state.loadingState ? "disabled" : ""}>*</button>`
           : `<input type="checkbox" ${rollupExplicitlySelected ? "checked" : ""} data-rollup="${definition.id}" ${state.loadingState ? "disabled" : ""}>`;
-    const optionalAvailable = context.optionalSelectablePaths.length > 0;
+    const optionalPackEnabled = isCapabilityPackEnabled(definition.optionalCapabilityPackId);
     const addonUnlocked = isRollupAddonUnlocked(definition);
-    const optionalSelectable = optionalAvailable && addonUnlocked;
-    const optionalChecked = optionalSelectable && (context.optionalSelected || context.optionalAutoAdded);
-    const optionalModulesDeployed = definition.optionalPaths.length > 0
-      && definition.optionalPaths.every((path) => modulesByPath.get(path)?.deployment_status === "deployed");
+    const optionalSelectable = addonUnlocked;
+    const optionalChecked = optionalPackEnabled;
     const destroyComponents = destroyMode
       ? definition.memberPaths
         .map((path) => modulesByPath.get(path))
@@ -1727,7 +1758,7 @@ function renderModules() {
               </div>
             `
             : `
-              ${definition.optionalPaths.length === 0 || optionalModulesDeployed
+              ${definition.optionalPaths.length === 0
                 ? ""
                 : `
                   <div class="rollup-addon-row">
@@ -1739,7 +1770,7 @@ function renderModules() {
                         ${optionalChecked ? "checked" : ""}
                         ${!optionalSelectable || state.loadingState ? "disabled" : ""}
                       >
-                      <span>${definition.addonToggleLabel} | ${rollupAddonStatusTextForDefinition(definition, optionalAvailable, addonUnlocked)}</span>
+                      <span>${definition.addonToggleLabel} | ${rollupAddonStatusTextForDefinition(definition, optionalPackEnabled, addonUnlocked)}</span>
                     </label>
                   </div>
                 `}
@@ -1782,13 +1813,11 @@ function renderModules() {
       const addonToggle = card.querySelector("[data-rollup-addon]");
       if (addonToggle) {
         addonToggle.addEventListener("change", async (event) => {
-          if (event.target.checked) {
-            context.primarySelectablePaths.forEach((path) => state.selected.add(path));
-            context.optionalSelectablePaths.forEach((path) => state.selected.add(path));
-          } else {
-            context.optionalSelectablePaths.forEach((path) => state.selected.delete(path));
+          const capabilityPackId = definition.optionalCapabilityPackId;
+          if (!capabilityPackId) {
+            return;
           }
-          await resolveSelection();
+          await updateCapabilityPackManifest(capabilityPackId, event.target.checked, definition);
         });
       }
     } else {
