@@ -282,6 +282,7 @@ resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
         Action = [
           "events:DescribeRule",
           "events:ListTagsForResource",
+          "events:ListTargetsByRule",
         ]
         Resource = "arn:aws:events:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:rule/${var.org_name}-*"
       },
@@ -289,11 +290,16 @@ resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
         Sid    = "LambdaProjectFunctionRead"
         Effect = "Allow"
         Action = [
+          "lambda:GetEventSourceMapping",
           "lambda:GetFunction",
           "lambda:GetFunctionCodeSigningConfig",
+          "lambda:GetPolicy",
           "lambda:ListVersionsByFunction",
         ]
-        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:${var.org_name}-*"
+        Resource = [
+          "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:${var.org_name}-*",
+          "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:event-source-mapping:*",
+        ]
       },
       {
         Sid    = "SSMProjectParameterRead"
