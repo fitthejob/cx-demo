@@ -184,6 +184,7 @@ resource "aws_iam_role_policy" "terraform_execution_connect_read" {
         Action = [
           "connect:DescribeInstance",
           "connect:DescribeInstanceAttribute",
+          "connect:ListLambdaFunctions",
         ]
         Resource = "arn:aws:connect:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*"
       },
@@ -201,6 +202,7 @@ resource "aws_iam_role_policy" "terraform_execution_connect_read" {
         Action = [
           "connect:DescribeQueue",
           "connect:DescribeRoutingProfile",
+          "connect:ListRoutingProfileQueues",
           "connect:ListQueueQuickConnects",
         ]
         Resource = [
