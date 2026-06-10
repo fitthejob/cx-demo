@@ -294,6 +294,7 @@ resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
           "lambda:GetFunction",
           "lambda:GetFunctionCodeSigningConfig",
           "lambda:GetPolicy",
+          "lambda:ListTags",
           "lambda:ListVersionsByFunction",
         ]
         Resource = [
