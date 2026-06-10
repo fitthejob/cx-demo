@@ -29,6 +29,7 @@ resource "aws_kms_key" "env" {
           AWS = data.terraform_remote_state.bootstrap.outputs.terraform_execution_role_arn
         }
         Action = [
+          "kms:Encrypt",
           "kms:Decrypt",
           "kms:GenerateDataKey",
           "kms:GenerateDataKeyWithoutPlaintext",

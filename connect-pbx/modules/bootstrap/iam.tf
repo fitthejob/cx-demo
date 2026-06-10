@@ -171,6 +171,7 @@ resource "aws_iam_role_policy" "terraform_execution_s3" {
         Sid    = "ConnectRecordingsPlaceholderManage"
         Effect = "Allow"
         Action = [
+          "s3:CreateBucket",
           "s3:PutEncryptionConfiguration",
           "s3:PutLifecycleConfiguration",
           "s3:PutBucketVersioning",
@@ -356,6 +357,7 @@ resource "aws_iam_role_policy" "terraform_execution_kms" {
         Sid    = "KMSStateAccess"
         Effect = "Allow"
         Action = [
+          "kms:Encrypt",
           "kms:Decrypt",
           "kms:GenerateDataKey",
           "kms:DescribeKey",
@@ -363,7 +365,7 @@ resource "aws_iam_role_policy" "terraform_execution_kms" {
         Resource = "arn:aws:kms:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:key/*"
         Condition = {
           "ForAnyValue:StringLike" = {
-            "kms:ResourceAliases" = "alias/${var.org_name}-tfstate-*"
+            "kms:ResourceAliases" = "alias/${var.org_name}-*"
           }
         }
       }
