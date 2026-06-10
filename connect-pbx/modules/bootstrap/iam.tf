@@ -200,9 +200,13 @@ resource "aws_iam_role_policy" "terraform_execution_connect_read" {
         Effect = "Allow"
         Action = [
           "connect:DescribeQueue",
+          "connect:DescribeRoutingProfile",
           "connect:ListQueueQuickConnects",
         ]
-        Resource = "arn:aws:connect:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*/queue/*"
+        Resource = [
+          "arn:aws:connect:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*/queue/*",
+          "arn:aws:connect:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*/routing-profile/*",
+        ]
       },
       {
         Sid    = "ConnectContactFlowRead"
@@ -217,6 +221,7 @@ resource "aws_iam_role_policy" "terraform_execution_connect_read" {
         Effect = "Allow"
         Action = [
           "connect:DescribeSecurityProfile",
+          "connect:ListSecurityProfilePermissions",
         ]
         Resource = "arn:aws:connect:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:instance/*/security-profile/*"
       },
@@ -254,6 +259,7 @@ resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
         Action = [
           "logs:DescribeMetricFilters",
           "logs:DescribeLogGroups",
+          "logs:ListTagsForResource",
         ]
         Resource = "*"
       },
@@ -280,6 +286,7 @@ resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
         Effect = "Allow"
         Action = [
           "lambda:GetFunction",
+          "lambda:GetFunctionCodeSigningConfig",
           "lambda:ListVersionsByFunction",
         ]
         Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:${var.org_name}-*"
