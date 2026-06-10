@@ -308,4 +308,4 @@ Bootstrap remains a separate operator-managed flow under PRD-00 and is not deplo
 - [DEPLOY-00-bootstrapping-guide.md](../DEPLOY-00-bootstrapping-guide.md)
 - [RB-00-02-modular-deployment-manifests.md](RB-00-02-modular-deployment-manifests.md)
 - [plan-apply.md](../plan-apply-docs/plan-apply.md)
-- [PRD-01-v1.1.0-github-actions-cicd-pipeline.md](../../PLANNING/PRD-01-v1.1.0-github-actions-cicd-pipeline.md)
+- [PRD-01-v1.1.0-github-actions-cicd-pipeline.md](../../../PRD_docs/PRD-01-v1.1.0-github-actions-cicd-pipeline.md)

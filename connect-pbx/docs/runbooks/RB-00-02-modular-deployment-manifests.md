@@ -21,10 +21,8 @@ Use this runbook when you need to:
 
 This runbook is the operational companion to:
 
-- [PREFACE.md](../../../PLANNING/PREFACE.md)
-- [PLATFORM-MODULARITY-PROFILES.md](../../../PLANNING/PLATFORM-MODULARITY-PROFILES.md)
-- [PRD-MODULARITY-READINESS-CHECKLIST.md](../../../PLANNING/PRD-MODULARITY-READINESS-CHECKLIST.md)
-- [PRD-TEMPLATE-MODULARITY-SECTION.md](../../../PLANNING/PRD-TEMPLATE-MODULARITY-SECTION.md)
+- [PRD-MODULARITY-READINESS-CHECKLIST.md](../../../PRD_docs/PRD-MODULARITY-READINESS-CHECKLIST.md)
+- [PRD-TEMPLATE-MODULARITY-SECTION.md](../../../PRD_docs/PRD-TEMPLATE-MODULARITY-SECTION.md)
 
 ---
 
@@ -646,8 +644,8 @@ That is expected today for the currently implemented core modules.
 
 Before a new PRD moves into implementation, complete the checklist in:
 
-- [PRD-MODULARITY-READINESS-CHECKLIST.md](../../../PLANNING/PRD-MODULARITY-READINESS-CHECKLIST.md)
-- [PRD-TEMPLATE-MODULARITY-SECTION.md](../../../PLANNING/PRD-TEMPLATE-MODULARITY-SECTION.md)
+- [PRD-MODULARITY-READINESS-CHECKLIST.md](../../../PRD_docs/PRD-MODULARITY-READINESS-CHECKLIST.md)
+- [PRD-TEMPLATE-MODULARITY-SECTION.md](../../../PRD_docs/PRD-TEMPLATE-MODULARITY-SECTION.md)
 
 At minimum, the PRD should already declare:
 
@@ -665,8 +663,6 @@ This gate is mandatory for downstream PRDs before implementation starts.
 
 ## Related Documents
 
-- [PREFACE.md](../../../PLANNING/PREFACE.md)
-- [PLATFORM-MODULARITY-PROFILES.md](../../../PLANNING/PLATFORM-MODULARITY-PROFILES.md)
-- [PRD-15-v1.0.0-number-portability-verification.md](../../../PLANNING/PRD-15-v1.0.0-number-portability-verification.md)
-- [PRD-90-v1.0.0-migration-state.md](../../../PLANNING/PRD-90-v1.0.0-migration-state.md)
-- [PRD-91-v1.0.0-cutover-operations.md](../../../PLANNING/PRD-91-v1.0.0-cutover-operations.md)
+- [PRD-15-v1.0.0-number-portability-verification.md](../../../PRD_docs/PRD-15-v1.0.0-number-portability-verification.md)
+- [PRD-90-v1.0.0-migration-state.md](../../../PRD_docs/PRD-90-v1.0.0-migration-state.md)
+- [PRD-91-v1.0.0-cutover-operations.md](../../../PRD_docs/PRD-91-v1.0.0-cutover-operations.md)

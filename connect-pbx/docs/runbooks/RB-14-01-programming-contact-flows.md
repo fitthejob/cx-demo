@@ -29,8 +29,7 @@ This repo treats Amazon Connect flow authoring as:
 Use these references together:
 
 - Terraform module: [modules/l1-contact-flow-framework](../../modules/l1-contact-flow-framework)
-- Flow JSON reference: [connect-flow-json-reference.md](../../../PLANNING/connect-flow-json-reference.md)
-- PRD design: [PRD-14-v1.0.0-base-contact-flow-framework.md](../../../PLANNING/PRD-14-v1.0.0-base-contact-flow-framework.md)
+- PRD design: [PRD-14-v1.0.0-base-contact-flow-framework.md](../../../PRD_docs/PRD-14-v1.0.0-base-contact-flow-framework.md)
 
 Practical rule:
 - treat `describe-contact-flow` output and Connect validator feedback as authoritative

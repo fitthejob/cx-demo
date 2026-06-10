@@ -116,7 +116,7 @@ A few important realities:
 
 The tracked repo focuses on the modular platform foundation and current implementation layers, but the broader design roadmap is more extensive than what is checked in here today.
 
-Future buildout is documented in a larger PRD set covering areas such as:
+Future buildout is documented in the public PRD set under `PRD_docs/`, covering areas such as:
 
 - Scale and resilience patterns
 - Multi-account topology
@@ -129,9 +129,7 @@ Future buildout is documented in a larger PRD set covering areas such as:
 - Deeper observability, alerting, and FinOps coverage
 - Migration and consolidation workflows
 
-To keep the main repo surface readable and focused on the active implementation, those broader planning PRDs are intentionally maintained outside the tracked project contents and are gitignored from this public repo snapshot.
-
-Additional architecture and roadmap materials can be shared separately during solution review conversations when deeper planning context would be helpful.
+The active implementation remains centered on `connect-pbx/`, while `PRD_docs/` captures the broader architecture and roadmap context behind the platform.
 
 ## Representative scenarios
 

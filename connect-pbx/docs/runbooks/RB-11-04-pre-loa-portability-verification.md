@@ -31,9 +31,9 @@ The current v1 implementation supports:
 Use these references together:
 
 - module: [modules/l1-number-portability-check](../../modules/l1-number-portability-check)
-- PRD: [PRD-15-v1.0.0-number-portability-verification.md](../../../PLANNING/PRD-15-v1.0.0-number-portability-verification.md)
-- PRD-90 integration: [PRD-90-v1.0.0-migration-state.md](../../../PLANNING/PRD-90-v1.0.0-migration-state.md)
-- cutover context: [PRD-91-v1.0.0-cutover-operations.md](../../../PLANNING/PRD-91-v1.0.0-cutover-operations.md)
+- PRD: [PRD-15-v1.0.0-number-portability-verification.md](../../../PRD_docs/PRD-15-v1.0.0-number-portability-verification.md)
+- PRD-90 integration: [PRD-90-v1.0.0-migration-state.md](../../../PRD_docs/PRD-90-v1.0.0-migration-state.md)
+- cutover context: [PRD-91-v1.0.0-cutover-operations.md](../../../PRD_docs/PRD-91-v1.0.0-cutover-operations.md)
 
 Environment config path:
 
@@ -395,8 +395,8 @@ PRD-15 is migration-only and is not enabled in the default bare-bones deployment
 
 ## Related Documents
 
-- [PRD-15-v1.0.0-number-portability-verification.md](../../../PLANNING/PRD-15-v1.0.0-number-portability-verification.md)
-- [PRD-90-v1.0.0-migration-state.md](../../../PLANNING/PRD-90-v1.0.0-migration-state.md)
-- [PRD-91-v1.0.0-cutover-operations.md](../../../PLANNING/PRD-91-v1.0.0-cutover-operations.md)
+- [PRD-15-v1.0.0-number-portability-verification.md](../../../PRD_docs/PRD-15-v1.0.0-number-portability-verification.md)
+- [PRD-90-v1.0.0-migration-state.md](../../../PRD_docs/PRD-90-v1.0.0-migration-state.md)
+- [PRD-91-v1.0.0-cutover-operations.md](../../../PRD_docs/PRD-91-v1.0.0-cutover-operations.md)
 - [RB-11-02-porting-and-cutover.md](RB-11-02-porting-and-cutover.md)
 - [RB-00-02-modular-deployment-manifests.md](RB-00-02-modular-deployment-manifests.md)
