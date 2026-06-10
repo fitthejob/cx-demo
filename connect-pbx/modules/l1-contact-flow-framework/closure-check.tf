@@ -8,7 +8,7 @@
 data "archive_file" "closure_check" {
   type        = "zip"
   source_dir  = "${path.module}/lambda/closure-check"
-  output_path = "${path.module}/.build/closure-check.zip"
+  output_path = "${path.module}/closure-check.zip"
 }
 
 # checkov:skip=CKV_AWS_116: Closure-check is invoked synchronously by contact flows, so a DLQ does not apply to the call-path request model.

@@ -1,7 +1,7 @@
 data "archive_file" "phone_association" {
   type        = "zip"
   source_dir  = "${path.module}/lambda/phone-association"
-  output_path = "${path.module}/.build/phone-association.zip"
+  output_path = "${path.module}/phone-association.zip"
 }
 
 # checkov:skip=CKV_AWS_116: Phone-association is invoked synchronously by operator tooling, so a DLQ does not apply to this execution model.
@@ -100,7 +100,7 @@ resource "terraform_data" "phone_number_flow_associations" {
     environment        = terraform.workspace
     python_executable  = var.python_executable
     helper_script_path = "${path.module}/scripts/invoke_phone_association.py"
-    destroy_output_path = "${path.module}/.build/phone-disassociation-${each.key}.json"
+    destroy_output_path = "${path.module}/phone-disassociation-${each.key}.json"
   }
 
   provisioner "local-exec" {
@@ -112,7 +112,7 @@ resource "terraform_data" "phone_number_flow_associations" {
       PHONE_NUMBER_ID = local.phone_number_ids[each.key]
       CONTACT_FLOW_ID = local.contact_flow_id_map[each.value]
       ACTION          = "associate"
-      OUTPUT_PATH     = "${path.module}/.build/phone-association-${each.key}.json"
+      OUTPUT_PATH     = "${path.module}/phone-association-${each.key}.json"
       RETRIES         = "3"
     }
   }

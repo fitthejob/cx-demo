@@ -158,6 +158,9 @@ resource "aws_iam_role_policy" "terraform_execution_s3" {
         Sid    = "ConnectRecordingsPlaceholderRead"
         Effect = "Allow"
         Action = [
+          "s3:GetBucketLocation",
+          "s3:GetBucketTagging",
+          "s3:ListBucket",
           "s3:GetBucketVersioning",
           "s3:GetLifecycleConfiguration",
           "s3:GetEncryptionConfiguration",
@@ -172,6 +175,8 @@ resource "aws_iam_role_policy" "terraform_execution_s3" {
         Effect = "Allow"
         Action = [
           "s3:CreateBucket",
+          "s3:DeleteBucket",
+          "s3:PutBucketTagging",
           "s3:PutEncryptionConfiguration",
           "s3:PutLifecycleConfiguration",
           "s3:PutBucketVersioning",
@@ -327,6 +332,7 @@ resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
         Sid    = "LambdaProjectFunctionManage"
         Effect = "Allow"
         Action = [
+          "lambda:UpdateFunctionCode",
           "lambda:UpdateFunctionConfiguration",
         ]
         Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:${var.org_name}-*"
