@@ -159,6 +159,7 @@ resource "aws_iam_role_policy" "terraform_execution_s3" {
         Effect = "Allow"
         Action = [
           "s3:GetBucketAcl",
+          "s3:GetBucketCORS",
           "s3:GetBucketLocation",
           "s3:GetBucketTagging",
           "s3:ListBucket",
