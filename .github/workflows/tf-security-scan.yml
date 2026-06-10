@@ -44,6 +44,7 @@ jobs:
         uses: bridgecrewio/checkov-action@v12
         with:
           directory: connect-pbx/${{ inputs.module_path }}
+          config_file: connect-pbx/.checkov.yml
           soft_fail: false
           output_format: cli
           download_external_modules: true

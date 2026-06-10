@@ -1,9 +1,36 @@
-# Checkov skip list — checks suppressed with justification
+# Checkov skip list - checks suppressed with justification.
 #
-# CKV2_AWS_62  – S3 event notifications: not needed for state/log buckets
-# CKV_AWS_144  – S3 cross-region replication: single-region state is acceptable;
-#                replication adds cost with no DR benefit at this stage
+# This repo is currently a non-live baseline/demo implementation rather than a
+# production deployment. The checks below are either:
+# - false positives against the current resource shape, or
+# - production hardening controls intentionally deferred because they are not
+#   necessary for the present execution model.
+#
+# CKV2_AWS_62 - S3 event notifications are not required for the PRD-10
+#   placeholder recordings bucket in this non-live baseline.
+# CKV_AWS_144 - Cross-region replication is intentionally omitted for the
+#   non-live placeholder recordings bucket to avoid demo-only cost and DR
+#   complexity.
+# CKV_AWS_269 - False positive for the current Connect storage config. The
+#   repo is not deploying Kinesis Video Stream storage here; the placeholder
+#   recording path already uses KMS on S3.
+# CKV_AWS_272 - Lambda code signing is a production hardening control that is
+#   intentionally deferred for this local zip-packaged non-live baseline.
+# CKV_AWS_117 - VPC attachment is intentionally omitted for these Lambdas
+#   because they only use AWS-managed services and a VPC would add latency and
+#   network complexity without improving the current non-live posture.
+# CKV_AWS_115 - Reserved concurrency is intentionally left unset until real
+#   workload behavior is known; arbitrary caps are not appropriate for the
+#   current non-live baseline.
+# CKV_AWS_116 - DLQs are intentionally omitted where the Lambda execution model
+#   is synchronous or otherwise adequately covered by direct failure surfacing
+#   and CloudWatch alarms in this non-live baseline.
 
 skip-check:
   - CKV2_AWS_62
   - CKV_AWS_144
+  - CKV_AWS_269
+  - CKV_AWS_272
+  - CKV_AWS_117
+  - CKV_AWS_115
+  - CKV_AWS_116
