@@ -166,6 +166,18 @@ resource "aws_iam_role_policy" "terraform_execution_s3" {
           "s3:GetBucketLogging",
         ]
         Resource = "arn:aws:s3:::${var.org_name}-connect-recordings-placeholder-${data.aws_caller_identity.current.account_id}"
+      },
+      {
+        Sid    = "ConnectRecordingsPlaceholderManage"
+        Effect = "Allow"
+        Action = [
+          "s3:PutEncryptionConfiguration",
+          "s3:PutLifecycleConfiguration",
+          "s3:PutBucketVersioning",
+          "s3:PutBucketPublicAccessBlock",
+          "s3:DeleteBucketPolicy",
+        ]
+        Resource = "arn:aws:s3:::${var.org_name}-connect-recordings-placeholder-${data.aws_caller_identity.current.account_id}"
       }
     ]
   })
@@ -277,6 +289,14 @@ resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
         Resource = "arn:aws:dynamodb:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/${var.org_name}-*"
       },
       {
+        Sid    = "DynamoDBProjectTableManage"
+        Effect = "Allow"
+        Action = [
+          "dynamodb:UpdateContinuousBackups",
+        ]
+        Resource = "arn:aws:dynamodb:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/${var.org_name}-*"
+      },
+      {
         Sid    = "EventBridgeProjectRuleRead"
         Effect = "Allow"
         Action = [
@@ -301,6 +321,14 @@ resource "aws_iam_role_policy" "terraform_execution_runtime_read" {
           "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:${var.org_name}-*",
           "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:event-source-mapping:*",
         ]
+      },
+      {
+        Sid    = "LambdaProjectFunctionManage"
+        Effect = "Allow"
+        Action = [
+          "lambda:UpdateFunctionConfiguration",
+        ]
+        Resource = "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:${var.org_name}-*"
       },
       {
         Sid    = "SSMProjectParameterRead"
