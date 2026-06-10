@@ -11,10 +11,10 @@ data "archive_file" "closure_check" {
   output_path = "${path.module}/.build/closure-check.zip"
 }
 
-#checkov:skip=CKV_AWS_116: Closure-check is invoked synchronously by contact flows, so a DLQ does not apply to the call-path request model.
-#checkov:skip=CKV_AWS_115: Reserved concurrency is intentionally left unset because call volume limits should be tuned per implementation.
-#checkov:skip=CKV_AWS_117: This Lambda only calls DynamoDB and SSM and intentionally stays outside a VPC to avoid extra latency in the inbound call path.
-#checkov:skip=CKV_AWS_272: Code signing is not yet part of the local zip-based Lambda packaging baseline for this repo.
+# checkov:skip=CKV_AWS_116: Closure-check is invoked synchronously by contact flows, so a DLQ does not apply to the call-path request model.
+# checkov:skip=CKV_AWS_115: Reserved concurrency is intentionally left unset because call volume limits should be tuned per implementation.
+# checkov:skip=CKV_AWS_117: This Lambda only calls DynamoDB and SSM and intentionally stays outside a VPC to avoid extra latency in the inbound call path.
+# checkov:skip=CKV_AWS_272: Code signing is not yet part of the local zip-based Lambda packaging baseline for this repo.
 resource "aws_lambda_function" "closure_check" {
   function_name    = "${var.org_name}-closure-check-${terraform.workspace}"
   description      = "Reads PRD-12 daily closure status and emergency closure. Invoked per-call by main inbound contact flow."

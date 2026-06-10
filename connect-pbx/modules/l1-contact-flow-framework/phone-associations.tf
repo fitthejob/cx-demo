@@ -4,9 +4,10 @@ data "archive_file" "phone_association" {
   output_path = "${path.module}/.build/phone-association.zip"
 }
 
-#checkov:skip=CKV_AWS_116: Phone-association is invoked synchronously by operator tooling, so a DLQ does not apply to this execution model.
-#checkov:skip=CKV_AWS_115: Reserved concurrency is intentionally left unset because admin-operation concurrency should be tuned per implementation.
-#checkov:skip=CKV_AWS_117: This Lambda only calls the public Amazon Connect API and intentionally stays outside a VPC to avoid unnecessary network dependencies.
+# checkov:skip=CKV_AWS_116: Phone-association is invoked synchronously by operator tooling, so a DLQ does not apply to this execution model.
+# checkov:skip=CKV_AWS_115: Reserved concurrency is intentionally left unset because admin-operation concurrency should be tuned per implementation.
+# checkov:skip=CKV_AWS_117: This Lambda only calls the public Amazon Connect API and intentionally stays outside a VPC to avoid unnecessary network dependencies.
+# checkov:skip=CKV_AWS_272: Code signing is not yet part of the local zip-based Lambda packaging baseline for this repo.
 resource "aws_lambda_function" "phone_association" {
   function_name    = "${var.org_name}-phone-flow-association-${terraform.workspace}"
   description      = "Associates phone numbers with contact flows via the Connect API."

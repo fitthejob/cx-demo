@@ -4,9 +4,10 @@ data "archive_file" "holiday_check" {
   output_path = "${path.module}/holiday_check.zip"
 }
 
-#checkov:skip=CKV_AWS_116: PRD-12 baseline relies on EventBridge and DynamoDB Streams retry semantics plus CloudWatch alarms instead of a separate DLQ.
-#checkov:skip=CKV_AWS_115: Reserved concurrency is intentionally left unset in the reusable baseline until workload-specific limits are known.
-#checkov:skip=CKV_AWS_117: This Lambda only uses AWS-managed services and intentionally stays out of a VPC to avoid unnecessary NAT and cold-start overhead.
+# checkov:skip=CKV_AWS_116: PRD-12 baseline relies on EventBridge and DynamoDB Streams retry semantics plus CloudWatch alarms instead of a separate DLQ.
+# checkov:skip=CKV_AWS_115: Reserved concurrency is intentionally left unset in the reusable baseline until workload-specific limits are known.
+# checkov:skip=CKV_AWS_117: This Lambda only uses AWS-managed services and intentionally stays out of a VPC to avoid unnecessary NAT and cold-start overhead.
+# checkov:skip=CKV_AWS_272: Code signing is not yet part of the local zip-based Lambda packaging baseline for this repo.
 resource "aws_lambda_function" "holiday_check" {
   function_name    = "${var.org_name}-holiday-check-${terraform.workspace}"
   runtime          = "python3.12"

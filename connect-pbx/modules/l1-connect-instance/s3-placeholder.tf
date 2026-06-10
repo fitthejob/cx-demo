@@ -1,5 +1,5 @@
-#checkov:skip=CKV2_AWS_62: Placeholder recordings bucket does not publish S3 events in the PRD-10 baseline.
-#checkov:skip=CKV_AWS_144: Placeholder recordings bucket is intentionally single-region until the fuller PRD-30 storage design exists.
+# checkov:skip=CKV2_AWS_62: Placeholder recordings bucket does not publish S3 events in the PRD-10 baseline.
+# checkov:skip=CKV_AWS_144: Placeholder recordings bucket is intentionally single-region until the fuller PRD-30 storage design exists.
 resource "aws_s3_bucket" "recordings_placeholder" {
   bucket = "${var.org_name}-connect-recordings-placeholder-${data.aws_caller_identity.current.account_id}"
 
@@ -87,7 +87,7 @@ resource "aws_s3_bucket_logging" "recordings_placeholder" {
   target_prefix = "s3-access-logs/recordings-placeholder/"
 }
 
-#checkov:skip=CKV_AWS_269: False positive for aws_connect_instance_storage_config; this PRD-10 placeholder uses S3 storage with a CMK, not Kinesis Video Streams.
+# checkov:skip=CKV_AWS_269: False positive for aws_connect_instance_storage_config; this PRD-10 placeholder uses S3 storage with a CMK, not Kinesis Video Streams.
 resource "aws_connect_instance_storage_config" "call_recordings" {
   instance_id   = aws_connect_instance.main.id
   resource_type = "CALL_RECORDINGS"
