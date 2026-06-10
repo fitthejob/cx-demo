@@ -50,10 +50,10 @@ locals {
   env_kms_key_arn = data.terraform_remote_state.account_baseline.outputs.kms_key_arn
 
   alarm_action_arns = var.alarm_action_arns != null ? var.alarm_action_arns : (
-    compact([try(data.terraform_remote_state.audit_pipeline[0].outputs.platform_alert_topic_arn, null)])
+    var.enable_audit_integration ? compact([try(data.terraform_remote_state.audit_pipeline[0].outputs.platform_alert_topic_arn, null)]) : []
   )
 
   placeholder_access_log_bucket_name = var.placeholder_access_log_bucket_name != null ? var.placeholder_access_log_bucket_name : (
-    try(data.terraform_remote_state.audit_pipeline[0].outputs.audit_bucket_name, null)
+    var.enable_audit_integration ? try(data.terraform_remote_state.audit_pipeline[0].outputs.audit_bucket_name, null) : null
   )
 }
